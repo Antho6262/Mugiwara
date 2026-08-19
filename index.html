@@ -15,7 +15,7 @@
     <form id="form-login">
       <div class="field">
         <label>Pseudo</label>
-        <input type="text" id="l-pseudo" placeholder="Ton pseudo" required autocomplete="username">
+        <select id="l-pseudo" required></select>
       </div>
       <div class="field">
         <label>Mot de passe</label>
@@ -35,29 +35,39 @@
   // déjà connecté -> direct au dashboard
   if (getSession()) window.location.href = 'pages/dashboard.html';
 
+  // remplit la liste déroulante des pseudos
+  db.ref('membres').get().then(snap => {
+    const membres = entries(snap.val())
+      .filter(([id, m]) => m.actif !== false)
+      .sort((a, b) => a[1].prenom.localeCompare(b[1].prenom));
+    const sel = document.getElementById('l-pseudo');
+    sel.innerHTML = membres.length === 0
+      ? '<option value="">Aucun membre — initialise le site</option>'
+      : '<option value="" disabled selected>— Choisis ton pseudo —</option>' +
+        membres.map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`).join('');
+  }).catch(err => console.error(err));
+
   document.getElementById('form-login').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const pseudo = document.getElementById('l-pseudo').value.trim();
+    const membreId = document.getElementById('l-pseudo').value;
     const pass = document.getElementById('l-pass').value;
     const errEl = document.getElementById('l-error');
     errEl.textContent = '';
 
+    if (!membreId) { errEl.textContent = 'Choisis ton pseudo.'; return; }
+
     try {
-      const snap = await db.ref('membres').get();
-      const membres = entries(snap.val());
-      const found = membres.find(([id, m]) =>
-        m.prenom && m.prenom.toLowerCase() === pseudo.toLowerCase() && m.mot_de_passe === pass
-      );
-      if (!found) {
-        errEl.textContent = 'Pseudo ou mot de passe incorrect.';
+      const snap = await db.ref('membres/' + membreId).get();
+      const m = snap.val();
+      if (!m || m.mot_de_passe !== pass) {
+        errEl.textContent = 'Mot de passe incorrect.';
         return;
       }
-      const [id, m] = found;
       if (m.actif === false) {
         errEl.textContent = 'Ce compte est désactivé.';
         return;
       }
-      setSession({ id, prenom: m.prenom, grade: m.grade, role: m.role || 'membre' });
+      setSession({ id: membreId, prenom: m.prenom, grade: m.grade, role: m.role || 'membre' });
       window.location.href = 'pages/dashboard.html';
     } catch (err) {
       errEl.textContent = "Impossible de contacter le site — vérifie ta config Firebase.";
