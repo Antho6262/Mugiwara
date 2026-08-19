@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Mugiwara — Stats & Quotas</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .bar-wrap{background:var(--bg-1);border:1px solid var(--line);border-radius:20px;height:14px;overflow:hidden;flex:1;min-width:120px;}
+  .bar-fill{height:100%;background:linear-gradient(90deg, var(--sunset-2), var(--gold));}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Stats & Quotas</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="tabs">
+      <button data-tab="stats" class="active">🧭 Stats</button>
+      <button data-tab="quotas">📋 Quotas</button>
+    </div>
+
+    <div class="tabpanel active" id="panel-stats">
+      <div class="grid cols-4" id="stat-cards"></div>
+      <div class="card">
+        <h3>Meilleurs vendeurs (pochons)</h3>
+        <table><thead><tr><th>Membre</th><th>Pochons vendus</th></tr></thead><tbody id="top-vente"></tbody></table>
+      </div>
+      <div class="card">
+        <h3>Meilleurs go fast</h3>
+        <table><thead><tr><th>Membre</th><th>Go fast réalisés</th></tr></thead><tbody id="top-gofast"></tbody></table>
+      </div>
+    </div>
+
+    <div class="tabpanel" id="panel-quotas">
+      <div class="card" id="quota-cfg-card">
+        <h3>Objectif hebdomadaire</h3>
+        <form class="entry" id="form-quota-cfg">
+          <div class="field"><label>Nombre d'activités / semaine</label><input type="number" id="q-cible" min="0" step="1"></div>
+          <button class="submit" type="submit">Enregistrer</button>
+        </form>
+        <div class="note-hint">Compte le total d'actions + go fast + ventes enregistrés depuis lundi.</div>
+      </div>
+      <div class="card">
+        <h3>Progression de la semaine</h3>
+        <table><thead><tr><th>Membre</th><th>Fait</th><th>Objectif</th><th style="width:35%;">Progression</th></tr></thead><tbody id="quota-body"></tbody></table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('stats', 'Stats & Quotas');
+  if (membre) {
+    document.querySelectorAll('.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    if (!canManage(membre)) document.getElementById('quota-cfg-card').style.display = 'none';
+
+    Promise.all([
+      db.ref('membres').get(),
+      db.ref('actions').get(),
+      db.ref('gofasts').get(),
+      db.ref('ventes').get(),
+      db.ref('config').get()
+    ]).then(([mSnap, aSnap, gSnap, vSnap, cSnap]) => {
+      const membres = Object.fromEntries(entries(mSnap.val()));
+      const cfg = cSnap.val() || {};
+      const actions = entries(aSnap.val());
+      const gofasts = entries(gSnap.val());
+      const ventes = entries(vSnap.val());
+
+      document.getElementById('stat-cards').innerHTML = `
+        <div class="stat"><div class="v">${actions.length}</div><div class="l">🏴‍☠️ Actions totales</div></div>
+        <div class="stat"><div class="v">${gofasts.reduce((s,[,g])=>s+(g.count||0),0)}</div><div class="l">🚗 Go fast totaux</div></div>
+        <div class="stat"><div class="v">${ventes.reduce((s,[,v])=>s+(v.qty||0),0)}</div><div class="l">💊 Pochons vendus</div></div>
+        <div class="stat"><div class="v">${Object.keys(membres).length}</div><div class="l">👒 Membres</div></div>
+      `;
+
+      const parVente = {}; ventes.forEach(([,v]) => parVente[v.membre_id] = (parVente[v.membre_id]||0) + (v.qty||0));
+      const parGofast = {}; gofasts.forEach(([,g]) => parGofast[g.membre_id] = (parGofast[g.membre_id]||0) + (g.count||0));
+
+      const topList = (obj, unit) => Object.entries(obj)
+        .filter(([id]) => membres[id])
+        .sort((a,b) => b[1]-a[1]).slice(0,8)
+        .map(([id, n]) => `<tr><td>${gradeInfo(membres[id].grade).emoji} ${membres[id].prenom}</td><td class="amt">${n} ${unit}</td></tr>`).join('')
+        || `<tr><td colspan="2" class="empty">Rien pour le moment.</td></tr>`;
+
+      document.getElementById('top-vente').innerHTML = topList(parVente, '💊');
+      document.getElementById('top-gofast').innerHTML = topList(parGofast, '🚗');
+
+      // ---- Quotas ----
+      const cible = cfg.quota_cible || 0;
+      document.getElementById('q-cible').value = cible;
+      const monday = startOfWeekISO();
+
+      const compte = {};
+      const add = (list, key) => list.forEach(([, item]) => {
+        if (item.date >= monday) compte[item[key]] = (compte[item[key]] || 0) + 1;
+      });
+      add(actions, 'membre_id'); add(gofasts, 'membre_id'); add(ventes, 'membre_id');
+
+      const rows = Object.entries(membres).filter(([,m]) => m.actif !== false).map(([id, m]) => {
+        const fait = compte[id] || 0;
+        const pct = cible > 0 ? Math.min(100, Math.round(fait / cible * 100)) : 0;
+        const g = gradeInfo(m.grade);
+        return `<tr>
+          <td>${g.emoji} ${m.prenom}</td>
+          <td>${fait}</td>
+          <td>${cible || '—'}</td>
+          <td><div style="display:flex;align-items:center;gap:8px;">
+            <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;"></div></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;">${pct}%</span>
+          </div></td>
+        </tr>`;
+      }).join('');
+      document.getElementById('quota-body').innerHTML = rows || `<tr><td colspan="4" class="empty">Aucun membre.</td></tr>`;
+    });
+
+    document.getElementById('form-quota-cfg').addEventListener('submit', e => {
+      e.preventDefault();
+      const v = parseInt(document.getElementById('q-cible').value, 10);
+      db.ref('config/quota_cible').set(isNaN(v) ? 0 : v).then(() => toast('Objectif enregistré — recharge la page.'));
+    });
+  }
+</script>
+</body>
+</html>

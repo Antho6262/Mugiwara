@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Mugiwara — Blanchiment</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Blanchiment</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="grid cols-3" id="soldes"></div>
+
+    <div class="card">
+      <h3>Nouveau blanchiment</h3>
+      <form class="entry" id="form-blanch">
+        <div class="field"><label>Montant sale à blanchir ($)</label><input type="number" id="b-montant" min="0" step="1" required></div>
+        <div class="field"><label>Description</label><input type="text" id="b-desc" placeholder="Ex: via Cash Boissons"></div>
+        <button class="submit" type="submit">Blanchir</button>
+      </form>
+      <div class="note-hint" id="b-hint"></div>
+    </div>
+
+    <div class="card">
+      <h3>Historique</h3>
+      <table>
+        <thead><tr><th>Description</th><th>Sale investi</th><th>Frais</th><th>Propre reçu</th><th>Par</th><th></th></tr></thead>
+        <tbody id="b-table"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('blanchiment', 'Blanchiment');
+  if (membre) {
+    let membresMap = {}, taux = 20;
+
+    db.ref('membres').on('value', s => { membresMap = Object.fromEntries(entries(s.val())); });
+    db.ref('config/blanchiment_taux').on('value', s => {
+      taux = s.val() ?? 20;
+      document.getElementById('b-hint').textContent = `Taux de frais actuel : ${taux}% (retenu au passage sale → propre).`;
+    });
+
+    function refreshSoldes() {
+      computeSoldes().then(({ solde_sale, solde_propre }) => {
+        document.getElementById('soldes').innerHTML = `
+          <div class="stat"><div class="v">${fmtMoney(solde_sale)}</div><div class="l">🕶️ Argent sale</div></div>
+          <div class="stat"><div class="v">${fmtMoney(solde_propre)}</div><div class="l">💵 Argent propre</div></div>
+          <div class="stat"><div class="v">${taux}%</div><div class="l">Taux de frais</div></div>
+        `;
+      });
+    }
+    refreshSoldes();
+
+    document.getElementById('form-blanch').addEventListener('submit', e => {
+      e.preventDefault();
+      const montant_sale = parseFloat(document.getElementById('b-montant').value);
+      const description = document.getElementById('b-desc').value.trim();
+      if (isNaN(montant_sale) || montant_sale <= 0) return;
+      const frais = montant_sale * (taux / 100);
+      const montant_propre = montant_sale - frais;
+      db.ref('blanchiments/' + uid()).set({
+        montant_sale, frais, montant_propre, description,
+        responsable: membre.prenom, date: new Date().toISOString()
+      }).then(refreshSoldes);
+      document.getElementById('form-blanch').reset();
+    });
+
+    db.ref('blanchiments').on('value', snap => {
+      const rows = entries(snap.val());
+      const tbody = document.getElementById('b-table');
+      tbody.innerHTML = rows.length === 0
+        ? `<tr><td colspan="6" class="empty">Aucun blanchiment enregistré.</td></tr>`
+        : rows.slice().reverse().map(([id, b]) => `
+            <tr>
+              <td>${b.description || '—'}</td>
+              <td>${fmtMoney(b.montant_sale)}</td>
+              <td style="color:var(--danger);">-${fmtMoney(b.frais)}</td>
+              <td class="amt">${fmtMoney(b.montant_propre)}</td>
+              <td>${b.responsable || '—'}</td>
+              <td><button class="del" data-id="${id}">✕</button></td>
+            </tr>`).join('');
+      refreshSoldes();
+    });
+
+    document.body.addEventListener('click', e => {
+      if (e.target.matches('#b-table .del')) db.ref('blanchiments/' + e.target.dataset.id).remove();
+    });
+  }
+</script>
+</body>
+</html>

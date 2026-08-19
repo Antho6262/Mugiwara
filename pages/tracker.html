@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Mugiwara — Tracker</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Tracker</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="tabs">
+      <button data-tab="actions" class="active">🏴‍☠️ Action</button>
+      <button data-tab="gofast">🚗 Go Fast</button>
+      <button data-tab="vente">💊 Vente</button>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="tabpanel active" id="panel-actions">
+      <div class="card">
+        <h3>Nouvelle action</h3>
+        <form class="entry" id="form-actions">
+          <div class="field"><label>Membre</label><select id="a-member" required></select></div>
+          <div class="field"><label>Montant total ($)</label><input type="number" id="a-montant" min="0" step="1" required></div>
+          <div class="field"><label>Note</label><input type="text" id="a-note" placeholder="optionnel"></div>
+          <button class="submit" type="submit">Ajouter</button>
+        </form>
+        <div class="note-hint" id="a-rate-hint"></div>
+      </div>
+      <div class="card">
+        <h3>Historique</h3>
+        <table><thead><tr><th>Membre</th><th>Montant</th><th>Part</th><th>Note</th><th></th></tr></thead><tbody id="a-table"></tbody></table>
+        <div class="totals" id="a-totals"></div>
+        <div class="grand" id="a-grand"></div>
+      </div>
+    </div>
+
+    <!-- GO FAST -->
+    <div class="tabpanel" id="panel-gofast">
+      <div class="card">
+        <h3>Nouveau go fast</h3>
+        <form class="entry" id="form-gofast">
+          <div class="field"><label>Membre</label><select id="g-member" required></select></div>
+          <div class="field"><label>Nombre de go fast</label><input type="number" id="g-count" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Note</label><input type="text" id="g-note" placeholder="optionnel"></div>
+          <button class="submit" type="submit">Ajouter</button>
+        </form>
+        <div class="note-hint" id="g-rate-hint"></div>
+      </div>
+      <div class="card">
+        <h3>Historique</h3>
+        <table><thead><tr><th>Membre</th><th>Go fast</th><th>Gain</th><th>Note</th><th></th></tr></thead><tbody id="g-table"></tbody></table>
+        <div class="totals" id="g-totals"></div>
+        <div class="grand" id="g-grand"></div>
+      </div>
+    </div>
+
+    <!-- VENTE -->
+    <div class="tabpanel" id="panel-vente">
+      <div class="card">
+        <h3>Nouvelle vente</h3>
+        <form class="entry" id="form-vente">
+          <div class="field"><label>Membre</label><select id="v-member" required></select></div>
+          <div class="field"><label>Pochons vendus 💊</label><input type="number" id="v-qty" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Note</label><input type="text" id="v-note" placeholder="optionnel"></div>
+          <button class="submit" type="submit">Ajouter</button>
+        </form>
+        <div class="note-hint" id="v-rate-hint"></div>
+      </div>
+      <div class="card">
+        <h3>Historique</h3>
+        <table><thead><tr><th>Membre</th><th>Pochons</th><th>Gain</th><th>Note</th><th></th></tr></thead><tbody id="v-table"></tbody></table>
+        <div class="totals" id="v-totals"></div>
+        <div class="grand" id="v-grand"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('tracker', 'Tracker');
+  if (membre) {
+    let membres = {};
+    let config = { taux_action_pct: 25, taux_gofast: 700, taux_pochon: 25 };
+
+    document.querySelectorAll('.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    function fillMemberSelects() {
+      const opts = Object.entries(membres)
+        .filter(([id, m]) => m.actif !== false)
+        .map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`)
+        .join('') || '<option value="">Aucun membre — ajoute-le dans Admin</option>';
+      ['a-member', 'g-member', 'v-member'].forEach(sid => {
+        const sel = document.getElementById(sid);
+        const cur = sel.value;
+        sel.innerHTML = opts;
+        if (cur) sel.value = cur;
+      });
+    }
+
+    function renderHints() {
+      document.getElementById('a-rate-hint').textContent = `Taux actuel : ${config.taux_action_pct}% du montant reversé au membre.`;
+      document.getElementById('g-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_gofast)} par go fast.`;
+      document.getElementById('v-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_pochon)} par pochon vendu.`;
+    }
+
+    function renderTotalsChips(elId, totals) {
+      const el = document.getElementById(elId);
+      const es = Object.entries(totals);
+      el.innerHTML = es.length === 0 ? '' : es.map(([id, sum]) => {
+        const m = membres[id];
+        const g = m ? gradeInfo(m.grade) : null;
+        return `<div class="total-chip">${g ? g.emoji : '❓'} ${m ? m.prenom : '?'} — <b>${fmtMoney(sum)}</b></div>`;
+      }).join('');
+    }
+
+    // ---- ACTIONS ----
+    db.ref('actions').on('value', snap => {
+      const rows = entries(snap.val());
+      const tbody = document.getElementById('a-table');
+      const totals = {}; let grand = 0;
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty">Aucune action enregistrée.</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.slice().reverse().map(([id, a]) => {
+          const m = membres[a.membre_id];
+          const gain = (a.montant || 0) * (config.taux_action_pct / 100);
+          totals[a.membre_id] = (totals[a.membre_id] || 0) + gain;
+          grand += gain;
+          const g = m ? gradeInfo(m.grade) : null;
+          return `<tr>
+            <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
+            <td>${fmtMoney(a.montant)}</td>
+            <td class="amt">${fmtMoney(gain)}</td>
+            <td>${a.note || '—'}</td>
+            <td><button class="del" data-id="${id}" data-type="actions">✕</button></td>
+          </tr>`;
+        }).join('');
+      }
+      renderTotalsChips('a-totals', totals);
+      document.getElementById('a-grand').textContent = 'Total équipe : ' + fmtMoney(grand);
+    });
+
+    document.getElementById('form-actions').addEventListener('submit', e => {
+      e.preventDefault();
+      const membre_id = document.getElementById('a-member').value;
+      const montant = parseFloat(document.getElementById('a-montant').value);
+      const note = document.getElementById('a-note').value.trim();
+      if (!membre_id || isNaN(montant)) return;
+      db.ref('actions/' + uid()).set({ membre_id, montant, note, date: new Date().toISOString(), par: membre.id });
+      document.getElementById('a-montant').value = '';
+      document.getElementById('a-note').value = '';
+    });
+
+    // ---- GO FAST ----
+    db.ref('gofasts').on('value', snap => {
+      const rows = entries(snap.val());
+      const tbody = document.getElementById('g-table');
+      const totals = {}; let grand = 0;
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty">Aucun go fast enregistré.</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.slice().reverse().map(([id, gf]) => {
+          const m = membres[gf.membre_id];
+          const gain = (gf.count || 0) * config.taux_gofast;
+          totals[gf.membre_id] = (totals[gf.membre_id] || 0) + gain;
+          grand += gain;
+          const g = m ? gradeInfo(m.grade) : null;
+          return `<tr>
+            <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
+            <td>🚗 ${gf.count}</td>
+            <td class="amt">${fmtMoney(gain)}</td>
+            <td>${gf.note || '—'}</td>
+            <td><button class="del" data-id="${id}" data-type="gofasts">✕</button></td>
+          </tr>`;
+        }).join('');
+      }
+      renderTotalsChips('g-totals', totals);
+      document.getElementById('g-grand').textContent = 'Total équipe : ' + fmtMoney(grand);
+    });
+
+    document.getElementById('form-gofast').addEventListener('submit', e => {
+      e.preventDefault();
+      const membre_id = document.getElementById('g-member').value;
+      const count = parseInt(document.getElementById('g-count').value, 10);
+      const note = document.getElementById('g-note').value.trim();
+      if (!membre_id || isNaN(count) || count < 1) return;
+      db.ref('gofasts/' + uid()).set({ membre_id, count, note, date: new Date().toISOString(), par: membre.id });
+      document.getElementById('g-count').value = '1';
+      document.getElementById('g-note').value = '';
+    });
+
+    // ---- VENTE ----
+    db.ref('ventes').on('value', snap => {
+      const rows = entries(snap.val());
+      const tbody = document.getElementById('v-table');
+      const totals = {}; let grand = 0;
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty">Aucune vente enregistrée.</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.slice().reverse().map(([id, v]) => {
+          const m = membres[v.membre_id];
+          const gain = (v.qty || 0) * config.taux_pochon;
+          totals[v.membre_id] = (totals[v.membre_id] || 0) + gain;
+          grand += gain;
+          const g = m ? gradeInfo(m.grade) : null;
+          return `<tr>
+            <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
+            <td>💊 ${v.qty}</td>
+            <td class="amt">${fmtMoney(gain)}</td>
+            <td>${v.note || '—'}</td>
+            <td><button class="del" data-id="${id}" data-type="ventes">✕</button></td>
+          </tr>`;
+        }).join('');
+      }
+      renderTotalsChips('v-totals', totals);
+      document.getElementById('v-grand').textContent = 'Total équipe : ' + fmtMoney(grand);
+    });
+
+    document.getElementById('form-vente').addEventListener('submit', e => {
+      e.preventDefault();
+      const membre_id = document.getElementById('v-member').value;
+      const qty = parseInt(document.getElementById('v-qty').value, 10);
+      const note = document.getElementById('v-note').value.trim();
+      if (!membre_id || isNaN(qty) || qty < 1) return;
+      db.ref('ventes/' + uid()).set({ membre_id, qty, note, date: new Date().toISOString(), par: membre.id });
+      document.getElementById('v-qty').value = '1';
+      document.getElementById('v-note').value = '';
+    });
+
+    // ---- delete (délégué) ----
+    document.body.addEventListener('click', e => {
+      if (e.target.classList.contains('del')) {
+        const id = e.target.dataset.id;
+        const type = e.target.dataset.type;
+        db.ref(type + '/' + id).remove();
+      }
+    });
+
+    // ---- membres + config en direct ----
+    db.ref('membres').on('value', snap => {
+      membres = Object.fromEntries(entries(snap.val()));
+      fillMemberSelects();
+    });
+    db.ref('config').on('value', snap => {
+      config = Object.assign({ taux_action_pct: 25, taux_gofast: 700, taux_pochon: 25 }, snap.val() || {});
+      renderHints();
+    });
+  }
+</script>
+</body>
+</html>

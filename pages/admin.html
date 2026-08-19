@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Mugiwara — Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Admin</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="card">
+      <h3>Taux & rémunération</h3>
+      <div class="grid cols-3">
+        <div class="field"><label>% par action</label><input type="number" id="cfg-percent" min="0" max="100" step="1"></div>
+        <div class="field"><label>$ par go fast</label><input type="number" id="cfg-gofast" min="0" step="1"></div>
+        <div class="field"><label>$ par pochon vendu</label><input type="number" id="cfg-pochon" min="0" step="1"></div>
+        <div class="field"><label>% frais de blanchiment</label><input type="number" id="cfg-blanchiment" min="0" max="100" step="1"></div>
+      </div>
+      <div style="margin-top:16px;"><button class="submit" id="cfg-save">Enregistrer</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Équipage</h3>
+      <form class="entry" id="form-member">
+        <div class="field"><label>Pseudo</label><input type="text" id="m-name" placeholder="Pseudo" required></div>
+        <div class="field"><label>Mot de passe</label><input type="text" id="m-pass" placeholder="Mot de passe" required></div>
+        <div class="field"><label>Grade</label><select id="m-grade"></select></div>
+        <button class="submit" type="submit">Ajouter au crew</button>
+      </form>
+      <div id="member-list" style="margin-top:16px;"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('admin', 'Admin');
+  if (membre) {
+    // grades du formulaire
+    document.getElementById('m-grade').innerHTML = GRADES_DEFAUT
+      .map(g => `<option value="${g.id}">${g.emoji} ${g.nom}</option>`).join('');
+
+    // ---- config (taux) ----
+    db.ref('config').on('value', snap => {
+      const cfg = Object.assign({ taux_action_pct: 25, taux_gofast: 700, taux_pochon: 25, blanchiment_taux: 20 }, snap.val() || {});
+      document.getElementById('cfg-percent').value = cfg.taux_action_pct;
+      document.getElementById('cfg-gofast').value = cfg.taux_gofast;
+      document.getElementById('cfg-pochon').value = cfg.taux_pochon;
+      document.getElementById('cfg-blanchiment').value = cfg.blanchiment_taux;
+    });
+
+    document.getElementById('cfg-save').addEventListener('click', () => {
+      const taux_action_pct = parseFloat(document.getElementById('cfg-percent').value);
+      const taux_gofast = parseFloat(document.getElementById('cfg-gofast').value);
+      const taux_pochon = parseFloat(document.getElementById('cfg-pochon').value);
+      const blanchiment_taux = parseFloat(document.getElementById('cfg-blanchiment').value);
+      db.ref('config').update({
+        ...(isNaN(taux_action_pct) ? {} : { taux_action_pct }),
+        ...(isNaN(taux_gofast) ? {} : { taux_gofast }),
+        ...(isNaN(taux_pochon) ? {} : { taux_pochon }),
+        ...(isNaN(blanchiment_taux) ? {} : { blanchiment_taux }),
+      });
+      toast('Taux enregistrés.');
+    });
+
+    // ---- membres ----
+    document.getElementById('form-member').addEventListener('submit', e => {
+      e.preventDefault();
+      const prenom = document.getElementById('m-name').value.trim();
+      const mot_de_passe = document.getElementById('m-pass').value;
+      const grade = document.getElementById('m-grade').value;
+      if (!prenom || !mot_de_passe) return;
+      db.ref('membres/' + uid()).set({ prenom, mot_de_passe, grade, role: 'membre', actif: true });
+      document.getElementById('m-name').value = '';
+      document.getElementById('m-pass').value = '';
+    });
+
+    db.ref('membres').on('value', snap => {
+      const list = entries(snap.val());
+      const el = document.getElementById('member-list');
+      if (list.length === 0) {
+        el.innerHTML = '<div class="empty">Aucun membre pour le moment.</div>';
+        return;
+      }
+      el.innerHTML = list.map(([id, m]) => {
+        const g = gradeInfo(m.grade);
+        return `<div class="member-row">
+          <span class="member-name">${m.prenom} ${m.role === 'admin' ? '<span class="badge admin">Admin</span>' : ''}</span>
+          <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <select class="grade-select" data-id="${id}">
+              ${GRADES_DEFAUT.map(gr => `<option value="${gr.id}" ${gr.id === m.grade ? 'selected' : ''}>${gr.emoji} ${gr.nom}</option>`).join('')}
+            </select>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);">
+              <input type="checkbox" class="admin-toggle" data-id="${id}" ${m.role === 'admin' ? 'checked' : ''}> Admin
+            </label>
+            <button class="del" data-id="${id}" data-type="membres">✕</button>
+          </span>
+        </div>`;
+      }).join('');
+
+      el.querySelectorAll('.grade-select').forEach(sel => {
+        sel.addEventListener('change', () => db.ref('membres/' + sel.dataset.id).update({ grade: sel.value }));
+      });
+      el.querySelectorAll('.admin-toggle').forEach(chk => {
+        chk.addEventListener('change', () => db.ref('membres/' + chk.dataset.id).update({ role: chk.checked ? 'admin' : 'membre' }));
+      });
+    });
+
+    document.body.addEventListener('click', e => {
+      if (e.target.classList.contains('del') && e.target.dataset.type === 'membres') {
+        if (e.target.dataset.id === membre.id) { toast("Tu ne peux pas te supprimer toi-même."); return; }
+        db.ref('membres/' + e.target.dataset.id).remove();
+      }
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Mugiwara — Stock</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Stock</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="tabs" id="cat-tabs"></div>
+    <div id="cat-panels"></div>
+
+    <div class="card" id="new-cat-card" style="display:none;">
+      <h3>Nouvelle catégorie</h3>
+      <form class="entry" id="form-cat">
+        <div class="field"><label>Nom</label><input type="text" id="c-nom" placeholder="Ex: Drogue" required></div>
+        <div class="field"><label>Emoji</label><input type="text" id="c-emoji" placeholder="💊" maxlength="4"></div>
+        <button class="submit" type="submit">Créer la catégorie</button>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('stock', 'Stock');
+  if (membre) {
+    if (canManage(membre)) document.getElementById('new-cat-card').style.display = 'block';
+
+    let activeCat = null;
+
+    db.ref('stock').on('value', snap => {
+      const cats = entries(snap.val());
+      const tabsEl = document.getElementById('cat-tabs');
+      const panelsEl = document.getElementById('cat-panels');
+
+      if (cats.length === 0) {
+        tabsEl.innerHTML = '';
+        panelsEl.innerHTML = `<div class="card"><div class="empty">Aucune catégorie de stock. ${canManage(membre) ? 'Crée-en une ci-dessous.' : ''}</div></div>`;
+        return;
+      }
+      if (!activeCat || !cats.find(([id]) => id === activeCat)) activeCat = cats[0][0];
+
+      tabsEl.innerHTML = cats.map(([id, c]) =>
+        `<button data-cat="${id}" class="${id === activeCat ? 'active' : ''}">${c.emoji || '📦'} ${c.nom}</button>`
+      ).join('');
+
+      tabsEl.querySelectorAll('button').forEach(b => {
+        b.addEventListener('click', () => { activeCat = b.dataset.cat; renderPanels(cats); });
+      });
+
+      renderPanels(cats);
+    });
+
+    function renderPanels(cats) {
+      const panelsEl = document.getElementById('cat-panels');
+      document.querySelectorAll('#cat-tabs button').forEach(b => b.classList.toggle('active', b.dataset.cat === activeCat));
+
+      const [catId, cat] = cats.find(([id]) => id === activeCat);
+      const produits = entries(cat.produits);
+
+      panelsEl.innerHTML = `
+        <div class="card">
+          <h3>${cat.emoji || '📦'} ${cat.nom}</h3>
+          <table>
+            <thead><tr><th>Produit</th><th>Prix</th><th>Stock</th><th>Seuil</th><th>Ajuster</th>${canManage(membre) ? '<th></th>' : ''}</tr></thead>
+            <tbody>
+              ${produits.length === 0 ? `<tr><td colspan="6" class="empty">Aucun produit dans cette catégorie.</td></tr>` :
+                produits.map(([pid, p]) => `
+                  <tr>
+                    <td>${p.nom}</td>
+                    <td>${fmtMoney(p.prix)}</td>
+                    <td class="${(p.stock || 0) <= (p.seuil || 0) ? 'amt' : ''}" style="${(p.stock||0) <= (p.seuil||0) ? 'color:var(--danger);' : ''}">${p.stock || 0}</td>
+                    <td>${p.seuil || 0}</td>
+                    <td style="display:flex;gap:6px;">
+                      <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="-1">−</button>
+                      <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="1">+</button>
+                    </td>
+                    ${canManage(membre) ? `<td><button class="del" data-cat="${catId}" data-prod="${pid}">✕</button></td>` : ''}
+                  </tr>
+                `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ${canManage(membre) ? `
+        <div class="card">
+          <h3>Nouveau produit</h3>
+          <form class="entry" id="form-prod">
+            <div class="field"><label>Nom</label><input type="text" id="p-nom" required></div>
+            <div class="field"><label>Prix</label><input type="number" id="p-prix" min="0" step="1" required></div>
+            <div class="field"><label>Seuil d'alerte</label><input type="number" id="p-seuil" min="0" step="1" value="5"></div>
+            <button class="submit" type="submit">Ajouter</button>
+          </form>
+          <div style="margin-top:14px;"><button class="ghost del-cat" data-cat="${catId}">Supprimer cette catégorie</button></div>
+        </div>` : ''}
+      `;
+
+      panelsEl.querySelectorAll('.adj').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const ref = db.ref(`stock/${btn.dataset.cat}/produits/${btn.dataset.prod}/stock`);
+          ref.get().then(s => ref.set(Math.max(0, (s.val() || 0) + parseInt(btn.dataset.delta, 10))));
+        });
+      });
+      panelsEl.querySelectorAll('.del').forEach(btn => {
+        if (!btn.dataset.prod) return;
+        btn.addEventListener('click', () => db.ref(`stock/${btn.dataset.cat}/produits/${btn.dataset.prod}`).remove());
+      });
+      const delCatBtn = panelsEl.querySelector('.del-cat');
+      if (delCatBtn) delCatBtn.addEventListener('click', () => {
+        db.ref('stock/' + delCatBtn.dataset.cat).remove();
+        activeCat = null;
+      });
+      const formProd = document.getElementById('form-prod');
+      if (formProd) formProd.addEventListener('submit', e => {
+        e.preventDefault();
+        const nom = document.getElementById('p-nom').value.trim();
+        const prix = parseFloat(document.getElementById('p-prix').value);
+        const seuil = parseInt(document.getElementById('p-seuil').value, 10) || 0;
+        if (!nom || isNaN(prix)) return;
+        db.ref(`stock/${catId}/produits/${uid()}`).set({ nom, prix, seuil, stock: 0 });
+        formProd.reset();
+        document.getElementById('p-seuil').value = 5;
+      });
+    }
+
+    document.getElementById('form-cat').addEventListener('submit', e => {
+      e.preventDefault();
+      const nom = document.getElementById('c-nom').value.trim();
+      const emoji = document.getElementById('c-emoji').value.trim() || '📦';
+      if (!nom) return;
+      db.ref('stock/' + uid()).set({ nom, emoji, produits: {} });
+      document.getElementById('form-cat').reset();
+    });
+  }
+</script>
+</body>
+</html>

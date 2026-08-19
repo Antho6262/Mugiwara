@@ -1,0 +1,247 @@
+/* ============================================================
+   LES MUGIWARA — Style global
+   Thème : carte au trésor / registre de pirate
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root{
+  --bg-0:#0b0704;
+  --bg-1:#17100a;
+  --card:#241a10;
+  --card-2:#2e2113;
+  --line:#5c4321;
+  --sunset-1:#c99a3d;
+  --sunset-2:#8b1f24;
+  --gold:#d8ad52;
+  --cream:#ecdfc0;
+  --muted:#a8916b;
+  --danger:#a8342f;
+  --success:#5c7a4a;
+  --radius:4px;
+  --sidebar-w:230px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'EB Garamond',serif;
+  font-size:17px;
+  background:
+    radial-gradient(900px 500px at 50% -8%, rgba(216,173,82,0.10), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, transparent 2px, transparent 4px),
+    linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 50%, #060402 100%);
+  color:var(--cream);
+  min-height:100vh;
+}
+body.login-body::before{
+  content:"";
+  position:fixed;inset:0;z-index:-1;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(0,0,0,.55), rgba(0,0,0,.92) 70%),
+    url('img/logo.png') center 30% / 480px no-repeat;
+  filter:saturate(.7);
+}
+a{color:inherit;text-decoration:none;}
+button, input, select, textarea{font-family:'EB Garamond',serif; color:var(--cream);}
+::selection{background:rgba(216,173,82,.25); color:var(--gold);}
+::placeholder{color:#5c4321;}
+
+h1,h2,h3{font-family:'Pirata One',cursive;font-weight:400;letter-spacing:1px;margin:0;color:var(--gold);}
+
+/* ---------- LOGIN / SETUP ---------- */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.login-card{
+  width:100%;max-width:400px;
+  background:linear-gradient(180deg, var(--card), var(--bg-1));
+  border:1px solid var(--line);
+  outline:1px solid rgba(216,173,82,.12);
+  outline-offset:-6px;
+  border-radius:var(--radius);
+  padding:36px 32px 30px;
+  text-align:center;
+}
+.login-hat{font-size:34px;display:block;margin-bottom:6px;filter:sepia(.4) saturate(1.4);}
+.login-logo{width:120px;height:120px;border-radius:50%;border:2px solid var(--sunset-1);object-fit:cover;margin:0 auto 10px;display:block;box-shadow:0 6px 20px rgba(0,0,0,.6);}
+.login-card h1{font-size:44px;line-height:0.95;text-shadow:0 3px 0 rgba(0,0,0,.6), 0 8px 16px rgba(0,0,0,.5);}
+.login-sub{font-family:'IM Fell English SC',serif;font-size:12px;letter-spacing:5px;color:var(--muted);margin:8px 0 26px;}
+.login-sub::before, .login-sub::after{content:'⚓';font-size:10px;margin:0 8px;color:var(--sunset-2);}
+.login-card form{display:flex;flex-direction:column;gap:14px;margin-top:6px;}
+.login-card .field{text-align:left;}
+.login-error{color:var(--danger);font-size:14px;margin-top:14px;min-height:18px;}
+.login-links{margin-top:22px;font-size:13px;color:var(--muted);}
+.login-links a{color:var(--sunset-1);border-bottom:1px dotted var(--sunset-1);}
+
+/* ---------- FIELDS / BUTTONS (partagé partout) ---------- */
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-family:'IM Fell English SC',serif;font-size:12px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
+select, input[type=number], input[type=text], input[type=password], input[type=date]{
+  background:var(--bg-1);
+  border:1px solid var(--line);
+  color:var(--cream);
+  padding:10px 10px;
+  border-radius:var(--radius);
+  font-family:'EB Garamond',serif;
+  font-size:15px;
+  width:100%;
+}
+select:focus, input:focus{outline:1px solid var(--gold);outline-offset:1px;}
+
+button.submit{
+  background:radial-gradient(circle at 35% 30%, var(--sunset-2), #5e1216 70%);
+  color:var(--gold);
+  border:1px solid #3d0e10;
+  padding:11px 22px;
+  border-radius:20px;
+  font-family:'IM Fell English SC',serif;
+  letter-spacing:1px;
+  cursor:pointer;
+  font-size:15px;
+  white-space:nowrap;
+  box-shadow:0 3px 10px rgba(0,0,0,.5), inset 0 0 0 1px rgba(216,173,82,.25);
+}
+button.submit:hover{filter:brightness(1.15);}
+button.ghost{
+  background:none;border:1px solid var(--line);color:var(--muted);
+  padding:9px 16px;border-radius:var(--radius);cursor:pointer;
+  font-family:'IM Fell English SC',serif;letter-spacing:1px;font-size:13px;
+}
+button.ghost:hover{border-color:var(--gold);color:var(--cream);}
+
+/* ---------- SHELL (sidebar + contenu) ---------- */
+.shell{display:flex;min-height:100vh;}
+.sidebar{
+  width:var(--sidebar-w);flex-shrink:0;
+  background:linear-gradient(180deg, var(--card), var(--bg-1));
+  border-right:1px solid var(--line);
+  padding:22px 14px;
+  position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;
+}
+.sidebar .brand{text-align:center;margin-bottom:24px;}
+.sidebar .brand .brand-logo{width:56px;height:56px;border-radius:50%;border:2px solid var(--sunset-1);display:block;margin:0 auto 8px;object-fit:cover;box-shadow:0 4px 14px rgba(0,0,0,.5);}
+.sidebar .brand h1{font-size:26px;line-height:1;}
+.sidebar .brand .tag{font-family:'IM Fell English SC',serif;font-size:10px;letter-spacing:3px;color:var(--muted);margin-top:4px;}
+.navlist{display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto;}
+.navlist a{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border-radius:var(--radius);
+  color:var(--muted);font-size:14px;
+  border:1px solid transparent;
+}
+.navlist a:hover{color:var(--cream);border-color:var(--line);}
+.navlist a.active{
+  background:linear-gradient(160deg, var(--sunset-2), #5e1216);
+  color:var(--gold);border-color:var(--sunset-2);
+}
+.navlist a .ic{font-size:16px;width:20px;text-align:center;}
+.sidebar .who{
+  border-top:1px dashed var(--line);
+  margin-top:14px;padding-top:14px;
+  font-size:13px;color:var(--muted);
+}
+.sidebar .who b{color:var(--gold);display:block;font-family:'EB Garamond',serif;font-size:15px;}
+.sidebar .who .grade{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sunset-1);}
+.sidebar .logout{margin-top:10px;width:100%;}
+
+.main{flex:1;min-width:0;padding:30px 34px;}
+.pagehead{margin-bottom:22px;}
+.pagehead h2{font-size:32px;}
+.pagehead .rule{
+  height:1px;margin-top:10px;
+  background:repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 11px);
+}
+
+/* ---------- CARD ---------- */
+.card{
+  background:linear-gradient(180deg, var(--card), var(--bg-1));
+  border:1px solid var(--line);
+  outline:1px solid rgba(216,173,82,.12);
+  outline-offset:-5px;
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:18px;
+}
+.card h3{font-size:22px;margin-bottom:14px;border-bottom:1px dashed var(--line);padding-bottom:10px;}
+.grid{display:grid;gap:14px;}
+.grid.cols-3{grid-template-columns:repeat(3,1fr);}
+.grid.cols-4{grid-template-columns:repeat(4,1fr);}
+@media(max-width:900px){.grid.cols-3, .grid.cols-4{grid-template-columns:1fr 1fr;}}
+@media(max-width:640px){.grid.cols-3, .grid.cols-4{grid-template-columns:1fr;} .shell{flex-direction:column;} .sidebar{width:100%;height:auto;position:relative;}}
+
+.stat{
+  background:var(--card-2);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;text-align:center;
+}
+.stat .v{font-family:'Pirata One',cursive;font-size:30px;color:var(--gold);}
+.stat .l{font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-top:4px;}
+
+/* ---------- TABS (tracker) ---------- */
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+.tabs button{
+  background:var(--card);border:1px solid var(--line);color:var(--muted);
+  padding:9px 18px;border-radius:3px 3px 10px 10px;
+  font-family:'IM Fell English SC',serif;font-size:14px;letter-spacing:1px;cursor:pointer;
+}
+.tabs button:hover{border-color:var(--gold);color:var(--cream);}
+.tabs button.active{
+  background:linear-gradient(160deg, var(--sunset-2), #5e1216);
+  color:var(--gold);border-color:var(--sunset-2);
+  box-shadow:0 4px 14px rgba(139,31,36,0.45);
+}
+.tabpanel{display:none;}
+.tabpanel.active{display:block;}
+
+form.entry{display:flex;flex-wrap:wrap;gap:12px;align-items:end;}
+form.entry .field{flex:1;min-width:150px;}
+
+/* ---------- TABLE ---------- */
+table{width:100%;border-collapse:collapse;margin-top:16px;font-size:15px;}
+th{
+  text-align:left;font-family:'IM Fell English SC',serif;color:var(--gold);
+  font-size:12px;letter-spacing:1.5px;text-transform:uppercase;
+  padding:8px;border-bottom:1px dashed var(--line);
+}
+td{padding:9px 8px;border-bottom:1px solid rgba(92,67,33,.35);color:var(--cream);font-family:'JetBrains Mono',monospace;font-size:13px;}
+td:first-child{font-family:'EB Garamond',serif;font-size:15px;}
+tr:last-child td{border-bottom:none;}
+.amt{color:var(--gold);font-weight:600;}
+.del{
+  background:none;border:1px solid var(--danger);color:var(--danger);
+  border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:11px;font-family:'JetBrains Mono',monospace;
+}
+.del:hover{background:var(--danger);color:#fff;}
+.empty{color:var(--muted);font-style:italic;padding:14px 4px;}
+
+.totals{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
+.total-chip{
+  background:var(--card-2);border:1px solid var(--line);border-radius:20px;
+  padding:8px 15px;font-size:13px;font-family:'JetBrains Mono',monospace;
+  display:flex;align-items:center;gap:8px;
+}
+.total-chip b{color:var(--gold);}
+.grand{
+  margin-top:16px;padding-top:12px;border-top:1px dashed var(--line);
+  font-family:'Pirata One',cursive;font-size:26px;color:var(--sunset-2);text-align:right;
+}
+
+.note-hint{font-size:13px;color:var(--muted);margin-top:10px;font-style:italic;}
+
+/* ---------- MEMBRES / ADMIN ---------- */
+.member-row{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  padding:10px 4px;border-bottom:1px solid rgba(92,67,33,.35);
+}
+.member-row:last-child{border-bottom:none;}
+.member-name{font-weight:600;}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;
+  background:var(--card-2);border:1px solid var(--line);font-size:12px;
+}
+.badge.admin{border-color:var(--sunset-2);color:var(--sunset-1);}
+.toast{
+  position:fixed;bottom:20px;right:20px;
+  background:var(--card);border:1px solid var(--gold);color:var(--cream);
+  padding:12px 18px;border-radius:var(--radius);font-size:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,.5);z-index:99;
+}
