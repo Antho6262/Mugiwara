@@ -15,38 +15,82 @@
       <div class="rule"></div>
     </div>
 
-    <div class="card">
-      <h3>🗓️ Semaines</h3>
-      <div id="semaine-active"></div>
-      <div style="margin-top:14px;"><button class="ghost" id="btn-bloquer-semaine">Bloquer la semaine en cours maintenant</button></div>
-      <div class="note-hint">Nouvelle semaine créée automatiquement chaque lundi (ou dès qu'un membre se connecte après). Bloquer maintenant force la clôture avant terme.</div>
-      <table style="margin-top:16px;">
-        <thead><tr><th>Semaine</th><th>Début</th><th>Fin</th><th>Statut</th></tr></thead>
-        <tbody id="semaine-liste"></tbody>
-      </table>
+    <div class="tabs">
+      <button data-tab="semaines" class="active">🗓️ Semaines</button>
+      <button data-tab="taux">💰 Taux</button>
+      <button data-tab="membres">👒 Membres</button>
+      <button data-tab="stockadmin">📦 Stock</button>
+      <button data-tab="permissions">👁️ Permissions</button>
     </div>
 
-    <div class="card">
-      <h3>Taux & rémunération</h3>
-      <div class="grid cols-3">
-        <div class="field"><label>% par action mineure (épicerie, ATM, go fast)</label><input type="number" id="cfg-percent" min="0" max="100" step="1"></div>
-        <div class="field"><label>$ par cambriolage</label><input type="number" id="cfg-gofast" min="0" step="1"></div>
-        <div class="field"><label>$ par pochon vendu</label><input type="number" id="cfg-pochon" min="0" step="1"></div>
-        <div class="field"><label>% frais de blanchiment</label><input type="number" id="cfg-blanchiment" min="0" max="100" step="1"></div>
-        <div class="field"><label>$ par branche produite (labo, à venir)</label><input type="number" id="cfg-branche" min="0" step="1"></div>
+    <!-- SEMAINES -->
+    <div class="tabpanel active" id="panel-semaines">
+      <div class="card">
+        <h3>Semaine en cours</h3>
+        <div id="semaine-active"></div>
+        <div style="margin-top:14px;"><button class="ghost" id="btn-bloquer-semaine">Bloquer la semaine en cours maintenant</button></div>
+        <div class="note-hint">Nouvelle semaine créée automatiquement chaque lundi (ou dès qu'un membre se connecte après). Bloquer maintenant force la clôture avant terme.</div>
       </div>
-      <div style="margin-top:16px;"><button class="submit" id="cfg-save">Enregistrer</button></div>
+      <div class="card">
+        <h3>Historique</h3>
+        <table>
+          <thead><tr><th>Semaine</th><th>Début</th><th>Fin</th><th>Statut</th></tr></thead>
+          <tbody id="semaine-liste"></tbody>
+        </table>
+      </div>
     </div>
 
-    <div class="card">
-      <h3>Équipage</h3>
-      <form class="entry" id="form-member">
-        <div class="field"><label>Pseudo</label><input type="text" id="m-name" placeholder="Pseudo" required></div>
-        <div class="field"><label>Mot de passe</label><input type="text" id="m-pass" placeholder="Mot de passe" required></div>
-        <div class="field"><label>Grade</label><select id="m-grade"></select></div>
-        <button class="submit" type="submit">Ajouter au crew</button>
-      </form>
-      <div id="member-list" style="margin-top:16px;"></div>
+    <!-- TAUX -->
+    <div class="tabpanel" id="panel-taux">
+      <div class="card">
+        <h3>Taux & rémunération</h3>
+        <div class="grid cols-3">
+          <div class="field"><label>% par action mineure (épicerie, ATM, go fast)</label><input type="number" id="cfg-percent" min="0" max="100" step="1"></div>
+          <div class="field"><label>$ par cambriolage</label><input type="number" id="cfg-gofast" min="0" step="1"></div>
+          <div class="field"><label>$ par pochon vendu</label><input type="number" id="cfg-pochon" min="0" step="1"></div>
+          <div class="field"><label>% frais de blanchiment</label><input type="number" id="cfg-blanchiment" min="0" max="100" step="1"></div>
+          <div class="field"><label>$ par branche produite (labo, à venir)</label><input type="number" id="cfg-branche" min="0" step="1"></div>
+        </div>
+        <div style="margin-top:16px;"><button class="submit" id="cfg-save">Enregistrer</button></div>
+      </div>
+    </div>
+
+    <!-- MEMBRES -->
+    <div class="tabpanel" id="panel-membres">
+      <div class="card">
+        <h3>Équipage</h3>
+        <form class="entry" id="form-member">
+          <div class="field"><label>Pseudo</label><input type="text" id="m-name" placeholder="Pseudo" required></div>
+          <div class="field"><label>Mot de passe</label><input type="text" id="m-pass" placeholder="Mot de passe" required></div>
+          <div class="field"><label>Grade</label><select id="m-grade"></select></div>
+          <button class="submit" type="submit">Ajouter au crew</button>
+        </form>
+        <div id="member-list" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <!-- STOCK (création) -->
+    <div class="tabpanel" id="panel-stockadmin">
+      <div class="card">
+        <h3>Nouvelle catégorie de stock</h3>
+        <form class="entry" id="form-cat-admin">
+          <div class="field"><label>Nom</label><input type="text" id="ca-nom" placeholder="Ex: Drogue" required></div>
+          <div class="field"><label>Emoji</label><input type="text" id="ca-emoji" placeholder="💊" maxlength="4"></div>
+          <button class="submit" type="submit">Créer</button>
+        </form>
+      </div>
+      <div id="stockadmin-list"></div>
+    </div>
+
+    <!-- PERMISSIONS -->
+    <div class="tabpanel" id="panel-permissions">
+      <div class="card">
+        <h3>Visibilité des pages par grade</h3>
+        <div class="note-hint" style="margin-bottom:14px;">Coché = visible pour ce grade. Le Fondateur et les comptes Admin voient toujours tout, quoi qu'il arrive. Par défaut (rien décoché) tout le monde voit tout.</div>
+        <div style="overflow-x:auto;">
+          <table id="perm-table"></table>
+        </div>
+      </div>
     </div>
   </main>
 </div>
@@ -58,6 +102,16 @@
 <script>
   const membre = initShell('admin', 'Admin');
   if (membre) {
+
+    document.querySelectorAll('.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
     // ---- Semaines ----
     function renderSemaines() {
       Promise.all([
@@ -94,7 +148,7 @@
       renderSemaines();
     });
 
-    // grades du formulaire
+    // grades du formulaire membre
     document.getElementById('m-grade').innerHTML = GRADES_DEFAUT
       .map(g => `<option value="${g.id}">${g.emoji} ${g.nom}</option>`).join('');
 
@@ -173,6 +227,102 @@
         db.ref('membres/' + e.target.dataset.id).remove();
       }
     });
+
+    // ---- Stock (création, catégories + produits) ----
+    document.getElementById('form-cat-admin').addEventListener('submit', e => {
+      e.preventDefault();
+      const nom = document.getElementById('ca-nom').value.trim();
+      const emoji = document.getElementById('ca-emoji').value.trim() || '📦';
+      if (!nom) return;
+      db.ref('stock/' + uid()).set({ nom, emoji, produits: {} });
+      document.getElementById('form-cat-admin').reset();
+    });
+
+    db.ref('stock').on('value', snap => {
+      const cats = entries(snap.val());
+      const el = document.getElementById('stockadmin-list');
+      if (cats.length === 0) {
+        el.innerHTML = '<div class="card"><div class="empty">Aucune catégorie pour le moment.</div></div>';
+        return;
+      }
+      el.innerHTML = cats.map(([catId, cat]) => {
+        const produits = entries(cat.produits);
+        return `<div class="card">
+          <h3>${cat.emoji || '📦'} ${cat.nom} <button class="del" data-cat="${catId}" data-type="cat" style="float:right;">✕</button></h3>
+          <table>
+            <thead><tr><th>Produit</th><th>Prix</th><th>Seuil</th><th></th></tr></thead>
+            <tbody>
+              ${produits.length === 0 ? `<tr><td colspan="4" class="empty">Aucun produit.</td></tr>` :
+                produits.map(([pid, p]) => `
+                  <tr>
+                    <td>${p.nom}</td>
+                    <td>${fmtMoney(p.prix)}</td>
+                    <td>${p.seuil || 0}</td>
+                    <td><button class="del" data-cat="${catId}" data-prod="${pid}" data-type="prod">✕</button></td>
+                  </tr>`).join('')}
+            </tbody>
+          </table>
+          <form class="entry form-prod-admin" data-cat="${catId}" style="margin-top:14px;">
+            <div class="field"><label>Nom</label><input type="text" class="np-nom" required></div>
+            <div class="field"><label>Prix</label><input type="number" class="np-prix" min="0" step="1" required></div>
+            <div class="field"><label>Seuil</label><input type="number" class="np-seuil" min="0" step="1" value="5"></div>
+            <button class="submit" type="submit">Ajouter</button>
+          </form>
+        </div>`;
+      }).join('');
+
+      el.querySelectorAll('.form-prod-admin').forEach(form => {
+        form.addEventListener('submit', e => {
+          e.preventDefault();
+          const catId = form.dataset.cat;
+          const nom = form.querySelector('.np-nom').value.trim();
+          const prix = parseFloat(form.querySelector('.np-prix').value);
+          const seuil = parseInt(form.querySelector('.np-seuil').value, 10) || 0;
+          if (!nom || isNaN(prix)) return;
+          db.ref(`stock/${catId}/produits/${uid()}`).set({ nom, prix, seuil, stock: 0 });
+        });
+      });
+    });
+
+    document.body.addEventListener('click', e => {
+      if (e.target.matches('.del[data-type="cat"]')) db.ref('stock/' + e.target.dataset.cat).remove();
+      if (e.target.matches('.del[data-type="prod"]')) db.ref(`stock/${e.target.dataset.cat}/produits/${e.target.dataset.prod}`).remove();
+    });
+
+    // ---- Permissions ----
+    const PERM_PAGES = [
+      { key: 'tracker', label: 'Tracker' },
+      { key: 'stock', label: 'Stock' },
+      { key: 'transactions', label: 'Transactions' },
+      { key: 'blanchiment', label: 'Blanchiment' },
+      { key: 'stats', label: 'Stats' },
+      { key: 'paye', label: 'Paye' },
+      { key: 'taxes', label: 'Taxes' },
+    ];
+
+    function renderPermissions() {
+      db.ref('permissions').get().then(snap => {
+        const perms = snap.val() || {};
+        const head = `<thead><tr><th>Grade</th>${PERM_PAGES.map(p => `<th>${p.label}</th>`).join('')}</tr></thead>`;
+        const body = GRADES_DEFAUT.map(g => `
+          <tr>
+            <td>${g.emoji} ${g.nom}</td>
+            ${PERM_PAGES.map(p => {
+              const val = (perms[g.id] || {})[p.key];
+              const checked = val !== false; // par défaut visible
+              return `<td style="text-align:center;"><input type="checkbox" class="perm-check" data-grade="${g.id}" data-page="${p.key}" ${checked ? 'checked' : ''}></td>`;
+            }).join('')}
+          </tr>`).join('');
+        document.getElementById('perm-table').innerHTML = head + '<tbody>' + body + '</tbody>';
+
+        document.querySelectorAll('.perm-check').forEach(chk => {
+          chk.addEventListener('change', () => {
+            db.ref(`permissions/${chk.dataset.grade}/${chk.dataset.page}`).set(chk.checked);
+          });
+        });
+      });
+    }
+    renderPermissions();
   }
 </script>
 </body>
