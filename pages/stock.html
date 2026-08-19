@@ -80,8 +80,12 @@
                 produits.map(([pid, p]) => `
                   <tr>
                     <td>${p.nom}</td>
-                    <td>${fmtMoney(p.prix)}</td>
-                    <td class="${(p.stock || 0) <= (p.seuil || 0) ? 'amt' : ''}" style="${(p.stock||0) <= (p.seuil||0) ? 'color:var(--danger);' : ''}">${p.stock || 0}</td>
+                    <td>${canManage(membre)
+                        ? `<input type="number" class="edit-prix" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.prix || 0}" style="width:90px;">`
+                        : fmtMoney(p.prix)}</td>
+                    <td>${canManage(membre)
+                        ? `<input type="number" class="edit-stock ${(p.stock||0) <= (p.seuil||0) ? 'stock-low' : ''}" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.stock || 0}" style="width:80px;">`
+                        : `<span class="${(p.stock || 0) <= (p.seuil || 0) ? 'amt' : ''}" style="${(p.stock||0) <= (p.seuil||0) ? 'color:var(--danger);' : ''}">${p.stock || 0}</span>`}</td>
                     <td>${p.seuil || 0}</td>
                     <td style="display:flex;gap:6px;">
                       <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="-1">−</button>
@@ -110,6 +114,20 @@
         btn.addEventListener('click', () => {
           const ref = db.ref(`stock/${btn.dataset.cat}/produits/${btn.dataset.prod}/stock`);
           ref.get().then(s => ref.set(Math.max(0, (s.val() || 0) + parseInt(btn.dataset.delta, 10))));
+        });
+      });
+      panelsEl.querySelectorAll('.edit-prix').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const v = parseFloat(inp.value);
+          if (isNaN(v) || v < 0) { inp.value = 0; return; }
+          db.ref(`stock/${inp.dataset.cat}/produits/${inp.dataset.prod}/prix`).set(v);
+        });
+      });
+      panelsEl.querySelectorAll('.edit-stock').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const v = parseInt(inp.value, 10);
+          if (isNaN(v) || v < 0) { inp.value = 0; return; }
+          db.ref(`stock/${inp.dataset.cat}/produits/${inp.dataset.prod}/stock`).set(v);
         });
       });
       panelsEl.querySelectorAll('.del').forEach(btn => {

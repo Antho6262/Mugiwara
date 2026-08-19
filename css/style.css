@@ -128,7 +128,7 @@ button.ghost:hover{border-color:var(--gold);color:var(--cream);}
   display:flex;flex-direction:column;
 }
 .sidebar .brand{text-align:center;margin-bottom:24px;}
-.sidebar .brand .brand-logo{width:56px;height:56px;border-radius:50%;border:2px solid var(--sunset-1);display:block;margin:0 auto 8px;object-fit:cover;box-shadow:0 4px 14px rgba(0,0,0,.5);}
+.sidebar .brand .brand-logo{width:96px;height:96px;border-radius:50%;border:2px solid var(--sunset-1);display:block;margin:0 auto 10px;object-fit:cover;box-shadow:0 4px 14px rgba(0,0,0,.5);}
 .sidebar .brand h1{font-size:26px;line-height:1;}
 .sidebar .brand .tag{font-family:'IM Fell English SC',serif;font-size:10px;letter-spacing:3px;color:var(--muted);margin-top:4px;}
 .navlist{display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto;}
@@ -235,6 +235,7 @@ tr:last-child td{border-bottom:none;}
 }
 
 .note-hint{font-size:13px;color:var(--muted);margin-top:10px;font-style:italic;}
+.stock-low{border-color:var(--danger) !important;color:var(--danger) !important;}
 
 /* ---------- MEMBRES / ADMIN ---------- */
 .member-row{
