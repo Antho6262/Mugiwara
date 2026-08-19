@@ -28,7 +28,7 @@
       <div class="card">
         <h3>Semaine en cours</h3>
         <div id="semaine-active"></div>
-        <div style="margin-top:14px;"><button class="ghost" id="btn-bloquer-semaine">Bloquer la semaine en cours maintenant</button></div>
+        <div style="margin-top:14px;"><button class="ghost" id="btn-bloquer-semaine" title="Clôture la semaine en cours avant sa date de fin et démarre une nouvelle semaine">Bloquer la semaine en cours maintenant</button></div>
         <div class="note-hint">Nouvelle semaine créée automatiquement chaque lundi (ou dès qu'un membre se connecte après). Bloquer maintenant force la clôture avant terme.</div>
       </div>
       <div class="card">
@@ -60,10 +60,10 @@
       <div class="card">
         <h3>Équipage</h3>
         <form class="entry" id="form-member">
-          <div class="field"><label>Pseudo</label><input type="text" id="m-name" placeholder="Pseudo" required></div>
-          <div class="field"><label>Mot de passe</label><input type="text" id="m-pass" placeholder="Mot de passe" required></div>
-          <div class="field"><label>Grade</label><select id="m-grade"></select></div>
-          <button class="submit" type="submit">Ajouter au crew</button>
+          <div class="field"><label>Pseudo</label><input type="text" id="m-name" placeholder="Pseudo" required title="Pseudo utilisé pour se connecter"></div>
+          <div class="field"><label>Mot de passe</label><input type="text" id="m-pass" placeholder="Mot de passe" required title="Mot de passe de connexion du membre"></div>
+          <div class="field"><label>Grade</label><select id="m-grade" title="Grade initial du membre"></select></div>
+          <button class="submit" type="submit" title="Crée le compte et l'ajoute à l'équipage">Ajouter au crew</button>
         </form>
         <div id="member-list" style="margin-top:16px;"></div>
       </div>
@@ -202,13 +202,13 @@
         return `<div class="member-row">
           <span class="member-name">${m.prenom} ${m.role === 'admin' ? '<span class="badge admin">Admin</span>' : ''}</span>
           <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <select class="grade-select" data-id="${id}">
+            <select class="grade-select" data-id="${id}" title="Change le grade de ce membre">
               ${GRADES_DEFAUT.map(gr => `<option value="${gr.id}" ${gr.id === m.grade ? 'selected' : ''}>${gr.emoji} ${gr.nom}</option>`).join('')}
             </select>
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);" title="Donne l'accès total au site (page Admin, toutes les permissions ignorées)">
               <input type="checkbox" class="admin-toggle" data-id="${id}" ${m.role === 'admin' ? 'checked' : ''}> Admin
             </label>
-            <button class="del" data-id="${id}" data-type="membres">✕</button>
+            <button class="del" data-id="${id}" data-type="membres" title="Supprime définitivement ce membre">✕</button>
           </span>
         </div>`;
       }).join('');
