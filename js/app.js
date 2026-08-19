@@ -57,8 +57,35 @@ function initShell(pageKey, title) {
   }
 
   ensureActiveWeek().catch(err => console.error('ensureActiveWeek', err));
+  applyPermissions(membre, pageKey).catch(err => console.error('applyPermissions', err));
 
   return membre;
+}
+
+// ------------------------------------------------------------
+// Permissions par grade — masque les liens interdits dans la sidebar
+// et redirige si la page courante est interdite. Par défaut (rien
+// configuré dans Admin → Permissions) tout reste visible pour tout
+// le monde : aucun risque de se retrouver bloqué hors config.
+// ------------------------------------------------------------
+async function applyPermissions(membre, pageKey) {
+  if (isAdmin(membre)) return; // fondateur / admin : toujours tout
+  if (pageKey === 'dashboard' || pageKey === 'profil' || pageKey === 'admin') return; // toujours visibles / déjà gérées
+
+  const snap = await db.ref('permissions/' + membre.grade).get();
+  const perms = snap.val() || {};
+
+  NAV_ITEMS.forEach(item => {
+    if (item.page === 'dashboard' || item.page === 'profil' || item.adminOnly) return;
+    if (perms[item.page] === false) {
+      const a = document.querySelector(`.navlist a[href="${item.file}"]`);
+      if (a) a.remove();
+    }
+  });
+
+  if (perms[pageKey] === false) {
+    window.location.href = 'dashboard.html';
+  }
 }
 
 function toast(msg) {
