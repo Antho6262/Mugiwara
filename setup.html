@@ -60,8 +60,10 @@
       await db.ref('config').set({
         nom_groupe: 'Les Mugiwara',
         taux_action_pct: 25,
-        taux_gofast: 700,
-        taux_pochon: 25
+        taux_cambriolage: 700,
+        taux_pochon: 25,
+        taux_branche: 10,
+        blanchiment_taux: 20
       });
 
       setSession({ id, prenom: pseudo, grade: 'fondateur', role: 'admin' });

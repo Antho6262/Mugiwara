@@ -18,10 +18,11 @@
     <div class="card">
       <h3>Taux & rémunération</h3>
       <div class="grid cols-3">
-        <div class="field"><label>% par action</label><input type="number" id="cfg-percent" min="0" max="100" step="1"></div>
-        <div class="field"><label>$ par go fast</label><input type="number" id="cfg-gofast" min="0" step="1"></div>
+        <div class="field"><label>% par action mineure (épicerie, ATM, go fast)</label><input type="number" id="cfg-percent" min="0" max="100" step="1"></div>
+        <div class="field"><label>$ par cambriolage</label><input type="number" id="cfg-gofast" min="0" step="1"></div>
         <div class="field"><label>$ par pochon vendu</label><input type="number" id="cfg-pochon" min="0" step="1"></div>
         <div class="field"><label>% frais de blanchiment</label><input type="number" id="cfg-blanchiment" min="0" max="100" step="1"></div>
+        <div class="field"><label>$ par branche produite (labo, à venir)</label><input type="number" id="cfg-branche" min="0" step="1"></div>
       </div>
       <div style="margin-top:16px;"><button class="submit" id="cfg-save">Enregistrer</button></div>
     </div>
@@ -52,23 +53,26 @@
 
     // ---- config (taux) ----
     db.ref('config').on('value', snap => {
-      const cfg = Object.assign({ taux_action_pct: 25, taux_gofast: 700, taux_pochon: 25, blanchiment_taux: 20 }, snap.val() || {});
+      const cfg = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, blanchiment_taux: 20, taux_branche: 10 }, snap.val() || {});
       document.getElementById('cfg-percent').value = cfg.taux_action_pct;
-      document.getElementById('cfg-gofast').value = cfg.taux_gofast;
+      document.getElementById('cfg-gofast').value = cfg.taux_cambriolage;
       document.getElementById('cfg-pochon').value = cfg.taux_pochon;
       document.getElementById('cfg-blanchiment').value = cfg.blanchiment_taux;
+      document.getElementById('cfg-branche').value = cfg.taux_branche;
     });
 
     document.getElementById('cfg-save').addEventListener('click', () => {
       const taux_action_pct = parseFloat(document.getElementById('cfg-percent').value);
-      const taux_gofast = parseFloat(document.getElementById('cfg-gofast').value);
+      const taux_cambriolage = parseFloat(document.getElementById('cfg-gofast').value);
       const taux_pochon = parseFloat(document.getElementById('cfg-pochon').value);
       const blanchiment_taux = parseFloat(document.getElementById('cfg-blanchiment').value);
+      const taux_branche = parseFloat(document.getElementById('cfg-branche').value);
       db.ref('config').update({
         ...(isNaN(taux_action_pct) ? {} : { taux_action_pct }),
-        ...(isNaN(taux_gofast) ? {} : { taux_gofast }),
+        ...(isNaN(taux_cambriolage) ? {} : { taux_cambriolage }),
         ...(isNaN(taux_pochon) ? {} : { taux_pochon }),
         ...(isNaN(blanchiment_taux) ? {} : { blanchiment_taux }),
+        ...(isNaN(taux_branche) ? {} : { taux_branche }),
       });
       toast('Taux enregistrés.');
     });

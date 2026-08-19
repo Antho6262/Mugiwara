@@ -32,7 +32,7 @@
       </div>
       <div class="card">
         <h3>Meilleurs go fast</h3>
-        <table><thead><tr><th>Membre</th><th>Go fast réalisés</th></tr></thead><tbody id="top-gofast"></tbody></table>
+        <table><thead><tr><th>Membre</th><th>Cambriolages réalisés</th></tr></thead><tbody id="top-gofast"></tbody></table>
       </div>
     </div>
 
@@ -74,7 +74,7 @@
     Promise.all([
       db.ref('membres').get(),
       db.ref('actions').get(),
-      db.ref('gofasts').get(),
+      db.ref('cambriolages').get(),
       db.ref('ventes').get(),
       db.ref('config').get()
     ]).then(([mSnap, aSnap, gSnap, vSnap, cSnap]) => {
@@ -86,7 +86,7 @@
 
       document.getElementById('stat-cards').innerHTML = `
         <div class="stat"><div class="v">${actions.length}</div><div class="l">🏴‍☠️ Actions totales</div></div>
-        <div class="stat"><div class="v">${gofasts.reduce((s,[,g])=>s+(g.count||0),0)}</div><div class="l">🚗 Go fast totaux</div></div>
+        <div class="stat"><div class="v">${gofasts.reduce((s,[,g])=>s+(g.count||0),0)}</div><div class="l">🏠 Cambriolages totaux</div></div>
         <div class="stat"><div class="v">${ventes.reduce((s,[,v])=>s+(v.qty||0),0)}</div><div class="l">💊 Pochons vendus</div></div>
         <div class="stat"><div class="v">${Object.keys(membres).length}</div><div class="l">👒 Membres</div></div>
       `;
@@ -101,7 +101,7 @@
         || `<tr><td colspan="2" class="empty">Rien pour le moment.</td></tr>`;
 
       document.getElementById('top-vente').innerHTML = topList(parVente, '💊');
-      document.getElementById('top-gofast').innerHTML = topList(parGofast, '🚗');
+      document.getElementById('top-gofast').innerHTML = topList(parGofast, '🏠');
 
       // ---- Quotas ----
       const cible = cfg.quota_cible || 0;

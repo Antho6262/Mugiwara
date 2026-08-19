@@ -17,7 +17,7 @@
 
     <div class="tabs">
       <button data-tab="actions" class="active">🏴‍☠️ Action</button>
-      <button data-tab="gofast">🚗 Go Fast</button>
+      <button data-tab="gofast">🏠 Cambriolage</button>
       <button data-tab="vente">💊 Vente</button>
     </div>
 
@@ -44,10 +44,10 @@
     <!-- GO FAST -->
     <div class="tabpanel" id="panel-gofast">
       <div class="card">
-        <h3>Nouveau go fast</h3>
+        <h3>Nouveau cambriolage</h3>
         <form class="entry" id="form-gofast">
           <div class="field"><label>Membre</label><select id="g-member" required></select></div>
-          <div class="field"><label>Nombre de go fast</label><input type="number" id="g-count" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Nombre de cambriolages</label><input type="number" id="g-count" min="1" step="1" value="1" required></div>
           <div class="field"><label>Note</label><input type="text" id="g-note" placeholder="optionnel"></div>
           <button class="submit" type="submit">Ajouter</button>
         </form>
@@ -55,7 +55,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membre</th><th>Go fast</th><th>Gain</th><th>Note</th><th></th></tr></thead><tbody id="g-table"></tbody></table>
+        <table><thead><tr><th>Membre</th><th>Cambriolage</th><th>Gain</th><th>Note</th><th></th></tr></thead><tbody id="g-table"></tbody></table>
         <div class="totals" id="g-totals"></div>
         <div class="grand" id="g-grand"></div>
       </div>
@@ -91,7 +91,7 @@
   const membre = initShell('tracker', 'Tracker');
   if (membre) {
     let membres = {};
-    let config = { taux_action_pct: 25, taux_gofast: 700, taux_pochon: 25 };
+    let config = { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25 };
 
     document.querySelectorAll('.tabs button').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -116,8 +116,8 @@
     }
 
     function renderHints() {
-      document.getElementById('a-rate-hint').textContent = `Taux actuel : ${config.taux_action_pct}% du montant reversé au membre.`;
-      document.getElementById('g-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_gofast)} par go fast.`;
+      document.getElementById('a-rate-hint').textContent = `Taux actuel : ${config.taux_action_pct}% du montant (épicerie, ATM, go fast) reversé au membre.`;
+      document.getElementById('g-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_cambriolage)} par cambriolage.`;
       document.getElementById('v-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_pochon)} par pochon vendu.`;
     }
 
@@ -170,25 +170,25 @@
     });
 
     // ---- GO FAST ----
-    db.ref('gofasts').on('value', snap => {
+    db.ref('cambriolages').on('value', snap => {
       const rows = entries(snap.val());
       const tbody = document.getElementById('g-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty">Aucun go fast enregistré.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="empty">Aucun cambriolage enregistré.</td></tr>`;
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, gf]) => {
           const m = membres[gf.membre_id];
-          const gain = (gf.count || 0) * config.taux_gofast;
+          const gain = (gf.count || 0) * config.taux_cambriolage;
           totals[gf.membre_id] = (totals[gf.membre_id] || 0) + gain;
           grand += gain;
           const g = m ? gradeInfo(m.grade) : null;
           return `<tr>
             <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
-            <td>🚗 ${gf.count}</td>
+            <td>🏠 ${gf.count}</td>
             <td class="amt">${fmtMoney(gain)}</td>
             <td>${gf.note || '—'}</td>
-            <td><button class="del" data-id="${id}" data-type="gofasts">✕</button></td>
+            <td><button class="del" data-id="${id}" data-type="cambriolages">✕</button></td>
           </tr>`;
         }).join('');
       }
@@ -202,7 +202,7 @@
       const count = parseInt(document.getElementById('g-count').value, 10);
       const note = document.getElementById('g-note').value.trim();
       if (!membre_id || isNaN(count) || count < 1) return;
-      db.ref('gofasts/' + uid()).set({ membre_id, count, note, date: new Date().toISOString(), par: membre.id });
+      db.ref('cambriolages/' + uid()).set({ membre_id, count, note, date: new Date().toISOString(), par: membre.id });
       document.getElementById('g-count').value = '1';
       document.getElementById('g-note').value = '';
     });
@@ -260,7 +260,7 @@
       fillMemberSelects();
     });
     db.ref('config').on('value', snap => {
-      config = Object.assign({ taux_action_pct: 25, taux_gofast: 700, taux_pochon: 25 }, snap.val() || {});
+      config = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25 }, snap.val() || {});
       renderHints();
     });
   }

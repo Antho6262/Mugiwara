@@ -84,7 +84,7 @@ function startOfWeekISO() {
 async function computeSoldes() {
   const [aSnap, gSnap, vSnap, cSnap, argSaleSnap, argPropreSnap, blanchSnap, payeSnap] = await Promise.all([
     db.ref('actions').get(),
-    db.ref('gofasts').get(),
+    db.ref('cambriolages').get(),
     db.ref('ventes').get(),
     db.ref('config').get(),
     db.ref('argent_sale').get(),
@@ -92,7 +92,7 @@ async function computeSoldes() {
     db.ref('blanchiments').get(),
     db.ref('payes').get(),
   ]);
-  const cfg = Object.assign({ taux_action_pct: 25, taux_gofast: 700, taux_pochon: 25 }, cSnap.val() || {});
+  const cfg = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25 }, cSnap.val() || {});
 
   let solde_sale = 0, solde_propre = 0;
   const parMembre = {}; // gains bruts par membre (avant paye)
@@ -103,7 +103,7 @@ async function computeSoldes() {
     parMembre[a.membre_id] = (parMembre[a.membre_id] || 0) + gain;
   });
   entries(gSnap.val()).forEach(([id, g]) => {
-    const gain = (g.count || 0) * cfg.taux_gofast;
+    const gain = (g.count || 0) * cfg.taux_cambriolage;
     solde_sale += gain;
     parMembre[g.membre_id] = (parMembre[g.membre_id] || 0) + gain;
   });
