@@ -16,6 +16,17 @@
     </div>
 
     <div class="card">
+      <h3>🗓️ Semaines</h3>
+      <div id="semaine-active"></div>
+      <div style="margin-top:14px;"><button class="ghost" id="btn-bloquer-semaine">Bloquer la semaine en cours maintenant</button></div>
+      <div class="note-hint">Nouvelle semaine créée automatiquement chaque lundi (ou dès qu'un membre se connecte après). Bloquer maintenant force la clôture avant terme.</div>
+      <table style="margin-top:16px;">
+        <thead><tr><th>Semaine</th><th>Début</th><th>Fin</th><th>Statut</th></tr></thead>
+        <tbody id="semaine-liste"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
       <h3>Taux & rémunération</h3>
       <div class="grid cols-3">
         <div class="field"><label>% par action mineure (épicerie, ATM, go fast)</label><input type="number" id="cfg-percent" min="0" max="100" step="1"></div>
@@ -47,6 +58,42 @@
 <script>
   const membre = initShell('admin', 'Admin');
   if (membre) {
+    // ---- Semaines ----
+    function renderSemaines() {
+      Promise.all([
+        db.ref('config/semaine_active_id').get(),
+        db.ref('semaines').get()
+      ]).then(([activeSnap, allSnap]) => {
+        const activeId = activeSnap.val();
+        const all = entries(allSnap.val()).sort((a, b) => (b[1].debut || '').localeCompare(a[1].debut || ''));
+
+        const active = all.find(([id]) => id === activeId);
+        document.getElementById('semaine-active').innerHTML = active
+          ? `<div class="badge admin" style="font-size:14px;">🗓️ Semaine active : ${active[1].nom}</div>`
+          : `<div class="empty">Aucune semaine active pour l'instant — elle sera créée automatiquement.</div>`;
+
+        document.getElementById('semaine-liste').innerHTML = all.length === 0
+          ? `<tr><td colspan="4" class="empty">Aucune semaine enregistrée.</td></tr>`
+          : all.map(([id, w]) => `
+              <tr>
+                <td>${w.nom}${id === activeId ? ' <span class="badge admin">Active</span>' : ''}</td>
+                <td>${w.debut ? new Date(w.debut).toLocaleDateString('fr-FR') : '—'}</td>
+                <td>${w.fin ? new Date(w.fin).toLocaleDateString('fr-FR') : '—'}</td>
+                <td>${w.bloquee ? '🔒 Bloquée' : '🟢 En cours'}</td>
+              </tr>`).join('');
+      });
+    }
+    renderSemaines();
+
+    document.getElementById('btn-bloquer-semaine').addEventListener('click', async () => {
+      const activeId = (await db.ref('config/semaine_active_id').get()).val();
+      if (!activeId) { toast('Aucune semaine active.'); return; }
+      await db.ref('semaines/' + activeId).update({ bloquee: true, closedAt: new Date().toISOString() });
+      await ensureActiveWeek();
+      toast('Semaine bloquée, nouvelle semaine créée.');
+      renderSemaines();
+    });
+
     // grades du formulaire
     document.getElementById('m-grade').innerHTML = GRADES_DEFAUT
       .map(g => `<option value="${g.id}">${g.emoji} ${g.nom}</option>`).join('');

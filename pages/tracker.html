@@ -92,6 +92,8 @@
   if (membre) {
     let membres = {};
     let config = { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25 };
+    let activeWeekId = null;
+    db.ref('config/semaine_active_id').on('value', s => { activeWeekId = s.val(); });
 
     document.querySelectorAll('.tabs button').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -164,7 +166,7 @@
       const montant = parseFloat(document.getElementById('a-montant').value);
       const note = document.getElementById('a-note').value.trim();
       if (!membre_id || isNaN(montant)) return;
-      db.ref('actions/' + uid()).set({ membre_id, montant, note, date: new Date().toISOString(), par: membre.id });
+      db.ref('actions/' + uid()).set({ membre_id, montant, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
       document.getElementById('a-montant').value = '';
       document.getElementById('a-note').value = '';
     });
@@ -202,7 +204,7 @@
       const count = parseInt(document.getElementById('g-count').value, 10);
       const note = document.getElementById('g-note').value.trim();
       if (!membre_id || isNaN(count) || count < 1) return;
-      db.ref('cambriolages/' + uid()).set({ membre_id, count, note, date: new Date().toISOString(), par: membre.id });
+      db.ref('cambriolages/' + uid()).set({ membre_id, count, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
       document.getElementById('g-count').value = '1';
       document.getElementById('g-note').value = '';
     });
@@ -240,7 +242,7 @@
       const qty = parseInt(document.getElementById('v-qty').value, 10);
       const note = document.getElementById('v-note').value.trim();
       if (!membre_id || isNaN(qty) || qty < 1) return;
-      db.ref('ventes/' + uid()).set({ membre_id, qty, note, date: new Date().toISOString(), par: membre.id });
+      db.ref('ventes/' + uid()).set({ membre_id, qty, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
       document.getElementById('v-qty').value = '1';
       document.getElementById('v-note').value = '';
     });

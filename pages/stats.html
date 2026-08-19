@@ -106,11 +106,11 @@
       // ---- Quotas ----
       const cible = cfg.quota_cible || 0;
       document.getElementById('q-cible').value = cible;
-      const monday = startOfWeekISO();
+      const activeWeekId = cfg.semaine_active_id;
 
       const compte = {};
       const add = (list, key) => list.forEach(([, item]) => {
-        if (item.date >= monday) compte[item[key]] = (compte[item[key]] || 0) + 1;
+        if (item.semaine_id === activeWeekId) compte[item[key]] = (compte[item[key]] || 0) + 1;
       });
       add(actions, 'membre_id'); add(gofasts, 'membre_id'); add(ventes, 'membre_id');
 

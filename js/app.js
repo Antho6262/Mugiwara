@@ -56,6 +56,8 @@ function initShell(pageKey, title) {
     document.getElementById('pagehead-title').textContent = title;
   }
 
+  ensureActiveWeek().catch(err => console.error('ensureActiveWeek', err));
+
   return membre;
 }
 
@@ -78,6 +80,66 @@ function startOfWeekISO() {
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - day);
   return d.toISOString();
+}
+
+// ------------------------------------------------------------
+// Semaines — création / clôture automatique, sans bot.
+// Appelée à chaque chargement de page (initShell) : idempotente,
+// utilise une transaction Firebase pour éviter les doublons si
+// plusieurs personnes se connectent au même moment.
+// ------------------------------------------------------------
+async function ensureActiveWeek() {
+  const now = new Date();
+  const mondayISO = startOfWeekISO();
+  const monday = new Date(mondayISO);
+  const nextMonday = new Date(monday);
+  nextMonday.setDate(nextMonday.getDate() + 7);
+  const finISO = nextMonday.toISOString();
+  const nowISO = now.toISOString();
+
+  // Semaine active déclarée dans la config
+  const activeIdSnap = await db.ref('config/semaine_active_id').get();
+  const activeId = activeIdSnap.val();
+
+  if (activeId) {
+    const wSnap = await db.ref('semaines/' + activeId).get();
+    const w = wSnap.val();
+    if (w && !w.bloquee && w.fin > nowISO) {
+      return activeId; // semaine en cours toujours valide, rien à faire
+    }
+    if (w && !w.bloquee) {
+      // semaine expirée naturellement → on la clôture
+      await db.ref('semaines/' + activeId).update({ bloquee: true, closedAt: nowISO });
+    }
+  }
+
+  // Cherche si une semaine correspondant à "cette semaine" existe déjà (évite les doublons)
+  const allSnap = await db.ref('semaines').get();
+  const all = entries(allSnap.val());
+  const existing = all.find(([id, w]) => w.debut === mondayISO);
+
+  let newId;
+  if (existing) {
+    newId = existing[0];
+  } else {
+    newId = uid();
+    await db.ref('semaines/' + newId).set({
+      nom: 'Semaine du ' + monday.toLocaleDateString('fr-FR'),
+      debut: mondayISO,
+      fin: finISO,
+      bloquee: false,
+      createdAt: nowISO
+    });
+  }
+
+  // Transaction : ne remplace la semaine active que si elle n'a pas déjà été mise à jour entre-temps
+  await db.ref('config/semaine_active_id').transaction(current => {
+    if (current === activeId) return newId;
+    return current; // quelqu'un d'autre a déjà mis à jour, on ne touche à rien
+  });
+
+  const finalSnap = await db.ref('config/semaine_active_id').get();
+  return finalSnap.val() || newId;
 }
 
 // Calcule le solde d'argent sale / propre depuis toutes les sources Firebase
