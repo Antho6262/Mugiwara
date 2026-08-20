@@ -21,6 +21,8 @@
       <button data-tab="gofast">🏠 Cambriolage</button>
       <button data-tab="vente">💊 Vente</button>
       <button data-tab="labo">🧪 Labo</button>
+      <button data-tab="fleeca">🏦 Fleeca</button>
+      <button data-tab="armurerie">🔫 Armurerie</button>
     </div>
 
     <!-- ACTIONS -->
@@ -137,6 +139,61 @@
         <div class="grand" id="l-grand"></div>
       </div>
     </div>
+    <!-- FLEECA -->
+    <div class="tabpanel" id="panel-fleeca">
+      <div class="card">
+        <h3>Nouveau braquage Fleeca</h3>
+        <form class="entry" id="form-fleeca" style="flex-direction:column;align-items:stretch;">
+          <div class="field">
+            <label>Membres participants</label>
+            <div class="member-checklist" id="fl-members"></div>
+          </div>
+          <div class="entry" style="margin-top:12px;">
+            <div class="field"><label>Montant total gagné ($)</label><input type="number" id="fl-montant" min="0" step="1" required></div>
+            <div class="field"><label>Résultat</label>
+              <select id="fl-resultat"><option value="Réussite">✅ Réussite</option><option value="Échec">❌ Échec</option></select>
+            </div>
+            <div class="field" id="fl-raison-wrap" style="display:none;"><label>Raison de l'échec</label><input type="text" id="fl-raison" placeholder="optionnel"></div>
+            <div class="field"><label>Note</label><input type="text" id="fl-note" placeholder="optionnel"></div>
+            <button class="submit" type="submit">Ajouter</button>
+          </div>
+        </form>
+        <div class="note-hint">L'argent va entièrement au groupe — aucune part individuelle. Compte pour 1 action dans le quota de chaque membre coché.</div>
+      </div>
+      <div class="card">
+        <h3>Historique</h3>
+        <table><thead><tr><th>Membres</th><th>Montant</th><th>Résultat</th><th>Note</th><th></th></tr></thead><tbody id="fl-table"></tbody></table>
+        <div class="grand" id="fl-grand"></div>
+      </div>
+    </div>
+
+    <!-- ARMURERIE -->
+    <div class="tabpanel" id="panel-armurerie">
+      <div class="card">
+        <h3>Nouveau braquage Armurerie</h3>
+        <form class="entry" id="form-armurerie" style="flex-direction:column;align-items:stretch;">
+          <div class="field">
+            <label>Membres participants</label>
+            <div class="member-checklist" id="ar-members"></div>
+          </div>
+          <div class="entry" style="margin-top:12px;">
+            <div class="field"><label>Montant total gagné ($)</label><input type="number" id="ar-montant" min="0" step="1" required></div>
+            <div class="field"><label>Résultat</label>
+              <select id="ar-resultat"><option value="Réussite">✅ Réussite</option><option value="Échec">❌ Échec</option></select>
+            </div>
+            <div class="field" id="ar-raison-wrap" style="display:none;"><label>Raison de l'échec</label><input type="text" id="ar-raison" placeholder="optionnel"></div>
+            <div class="field"><label>Note</label><input type="text" id="ar-note" placeholder="optionnel"></div>
+            <button class="submit" type="submit">Ajouter</button>
+          </div>
+        </form>
+        <div class="note-hint">L'argent va entièrement au groupe — aucune part individuelle. Compte pour 1 action dans le quota de chaque membre coché.</div>
+      </div>
+      <div class="card">
+        <h3>Historique</h3>
+        <table><thead><tr><th>Membres</th><th>Montant</th><th>Résultat</th><th>Note</th><th></th></tr></thead><tbody id="ar-table"></tbody></table>
+        <div class="grand" id="ar-grand"></div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -161,7 +218,7 @@
       });
     });
 
-    ['a', 'g', 'v', 'l'].forEach(prefix => {
+    ['a', 'g', 'v', 'l', 'fl', 'ar'].forEach(prefix => {
       document.getElementById(prefix + '-resultat').addEventListener('change', e => {
         document.getElementById(prefix + '-raison-wrap').style.display = e.target.value === 'Échec' ? 'block' : 'none';
       });
@@ -177,6 +234,17 @@
         const cur = sel.value;
         sel.innerHTML = opts;
         if (cur) sel.value = cur;
+      });
+
+      const membresActifs = Object.entries(membres).filter(([id, m]) => m.actif !== false);
+      ['fl-members', 'ar-members'].forEach(cid => {
+        const el = document.getElementById(cid);
+        const cochesAvant = new Set([...el.querySelectorAll('input:checked')].map(i => i.value));
+        el.innerHTML = membresActifs.length === 0
+          ? '<span class="empty">Aucun membre — ajoute-le dans Admin</span>'
+          : membresActifs.map(([id, m]) => `
+              <label><input type="checkbox" value="${id}" ${cochesAvant.has(id) ? 'checked' : ''}> ${gradeInfo(m.grade).emoji} ${m.prenom}</label>
+            `).join('');
       });
     }
 
@@ -471,6 +539,56 @@
       document.getElementById('l-raison-wrap').style.display = 'none';
       document.getElementById('l-resultat').value = 'Réussite';
     });
+
+    // ---- FLEECA / ARMURERIE (braquages collectifs, aucune part individuelle) ----
+    function setupBraquage(prefix, nodeName, label) {
+      db.ref(nodeName).on('value', snap => {
+        const rows = entries(snap.val());
+        const tbody = document.getElementById(prefix + '-table');
+        let grand = 0;
+        if (rows.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="empty">Aucun braquage ${label} enregistré.</td></tr>`;
+        } else {
+          tbody.innerHTML = rows.slice().reverse().map(([id, r]) => {
+            const reussite = r.resultat !== 'Échec';
+            grand += (r.montant || 0);
+            const noms = (r.membres_ids || []).map(mid => {
+              const m = membres[mid];
+              return m ? `${gradeInfo(m.grade).emoji} ${m.prenom}` : null;
+            }).filter(Boolean).join(', ') || '—';
+            return `<tr>
+              <td>${noms}</td>
+              <td class="amt">${fmtMoney(r.montant)}</td>
+              <td>${reussite ? '✅ Réussite' : `❌ Échec${r.raison ? ' — ' + r.raison : ''}`}</td>
+              <td>${r.note || '—'}</td>
+              <td><button class="del" data-id="${id}" data-type="${nodeName}">✕</button></td>
+            </tr>`;
+          }).join('');
+        }
+        document.getElementById(prefix + '-grand').textContent = 'Total réel gagné (groupe) : ' + fmtMoney(grand);
+      });
+
+      document.getElementById('form-' + (prefix === 'fl' ? 'fleeca' : 'armurerie')).addEventListener('submit', e => {
+        e.preventDefault();
+        const membres_ids = [...document.querySelectorAll(`#${prefix}-members input:checked`)].map(i => i.value);
+        const montant = parseFloat(document.getElementById(prefix + '-montant').value);
+        const resultat = document.getElementById(prefix + '-resultat').value;
+        const raison = document.getElementById(prefix + '-raison').value.trim();
+        const note = document.getElementById(prefix + '-note').value.trim();
+        if (membres_ids.length === 0 || isNaN(montant)) return;
+        db.ref(nodeName + '/' + uid()).set({
+          membres_ids, montant, resultat, raison, note,
+          date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId
+        });
+        document.getElementById(prefix + '-montant').value = '';
+        document.getElementById(prefix + '-note').value = '';
+        document.getElementById(prefix + '-raison').value = '';
+        document.getElementById(prefix + '-raison-wrap').style.display = 'none';
+        document.getElementById(prefix + '-resultat').value = 'Réussite';
+      });
+    }
+    setupBraquage('fl', 'fleecas', 'Fleeca');
+    setupBraquage('ar', 'armureries', 'Armurerie');
 
     // ---- delete (délégué) ----
     document.body.addEventListener('click', e => {

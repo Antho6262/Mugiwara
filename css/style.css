@@ -236,6 +236,13 @@ tr:last-child td{border-bottom:none;}
 
 .note-hint{font-size:13px;color:var(--muted);margin-top:10px;font-style:italic;}
 .stock-low{border-color:var(--danger) !important;color:var(--danger) !important;}
+.member-checklist{display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg-1);border:1px solid var(--line);border-radius:var(--radius);}
+.member-checklist label{
+  display:flex;align-items:center;gap:6px;
+  background:var(--card-2);border:1px solid var(--line);border-radius:20px;
+  padding:6px 12px;font-size:13px;cursor:pointer;
+}
+.member-checklist label:has(input:checked){border-color:var(--gold);color:var(--gold);}
 
 /* ---------- MEMBRES / ADMIN ---------- */
 .member-row{

@@ -76,19 +76,25 @@
       db.ref('actions').get(),
       db.ref('cambriolages').get(),
       db.ref('ventes').get(),
+      db.ref('labos').get(),
+      db.ref('fleecas').get(),
+      db.ref('armureries').get(),
       db.ref('config').get()
-    ]).then(([mSnap, aSnap, gSnap, vSnap, cSnap]) => {
+    ]).then(([mSnap, aSnap, gSnap, vSnap, lSnap, flSnap, arSnap, cSnap]) => {
       const membres = Object.fromEntries(entries(mSnap.val()));
       const cfg = cSnap.val() || {};
       const actions = entries(aSnap.val()).filter(([,a]) => a.resultat !== 'Échec');
       const gofasts = entries(gSnap.val()).filter(([,g]) => g.resultat !== 'Échec');
       const ventes = entries(vSnap.val()).filter(([,v]) => v.resultat !== 'Échec');
+      const labos = entries(lSnap.val()).filter(([,l]) => l.resultat !== 'Échec');
+      const fleecas = entries(flSnap.val()).filter(([,r]) => r.resultat !== 'Échec');
+      const armureries = entries(arSnap.val()).filter(([,r]) => r.resultat !== 'Échec');
 
       document.getElementById('stat-cards').innerHTML = `
         <div class="stat"><div class="v">${actions.length}</div><div class="l">🏴‍☠️ Actions totales</div></div>
         <div class="stat"><div class="v">${gofasts.reduce((s,[,g])=>s+(g.count||0),0)}</div><div class="l">🏠 Cambriolages totaux</div></div>
         <div class="stat"><div class="v">${ventes.reduce((s,[,v])=>s+(v.qty||0),0)}</div><div class="l">💊 Pochons vendus</div></div>
-        <div class="stat"><div class="v">${Object.keys(membres).length}</div><div class="l">👒 Membres</div></div>
+        <div class="stat"><div class="v">${fleecas.length + armureries.length}</div><div class="l">🏦 Braquages Fleeca/Armurerie</div></div>
       `;
 
       const parVente = {}; ventes.forEach(([,v]) => parVente[v.membre_id] = (parVente[v.membre_id]||0) + (v.qty||0));
@@ -112,7 +118,13 @@
       const add = (list, key) => list.forEach(([, item]) => {
         if (item.semaine_id === activeWeekId) compte[item[key]] = (compte[item[key]] || 0) + 1;
       });
-      add(actions, 'membre_id'); add(gofasts, 'membre_id'); add(ventes, 'membre_id');
+      add(actions, 'membre_id'); add(gofasts, 'membre_id'); add(ventes, 'membre_id'); add(labos, 'membre_id');
+
+      // Fleeca / Armurerie : compte 1 action pour chaque membre coché
+      [...fleecas, ...armureries].forEach(([, r]) => {
+        if (r.semaine_id !== activeWeekId) return;
+        (r.membres_ids || []).forEach(mid => { compte[mid] = (compte[mid] || 0) + 1; });
+      });
 
       const rows = Object.entries(membres).filter(([,m]) => m.actif !== false).map(([id, m]) => {
         const fait = compte[id] || 0;

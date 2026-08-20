@@ -175,11 +175,13 @@ async function ensureActiveWeek() {
 
 // Calcule le solde d'argent sale / propre depuis toutes les sources Firebase
 async function computeSoldes() {
-  const [aSnap, gSnap, vSnap, lSnap, cSnap, argSaleSnap, argPropreSnap, blanchSnap, payeSnap] = await Promise.all([
+  const [aSnap, gSnap, vSnap, lSnap, flSnap, arSnap, cSnap, argSaleSnap, argPropreSnap, blanchSnap, payeSnap] = await Promise.all([
     db.ref('actions').get(),
     db.ref('cambriolages').get(),
     db.ref('ventes').get(),
     db.ref('labos').get(),
+    db.ref('fleecas').get(),
+    db.ref('armureries').get(),
     db.ref('config').get(),
     db.ref('argent_sale').get(),
     db.ref('argent_propre').get(),
@@ -214,6 +216,13 @@ async function computeSoldes() {
     solde_sale += montant;
     const part = (l.branche_qty || 0) * (cfg.taux_branche || 0);
     parMembre[l.membre_id] = (parMembre[l.membre_id] || 0) + part;
+  });
+  // Fleeca / Armurerie : tout va au groupe, aucune part individuelle
+  entries(flSnap.val()).filter(([id, r]) => r.resultat !== 'Échec').forEach(([id, r]) => {
+    solde_sale += r.montant || 0;
+  });
+  entries(arSnap.val()).filter(([id, r]) => r.resultat !== 'Échec').forEach(([id, r]) => {
+    solde_sale += r.montant || 0;
   });
 
   entries(argSaleSnap.val()).forEach(([id, m]) => {

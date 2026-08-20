@@ -50,16 +50,20 @@
       db.ref('cambriolages').get(),
       db.ref('ventes').get(),
       db.ref('labos').get(),
+      db.ref('fleecas').get(),
+      db.ref('armureries').get(),
       db.ref('config').get()
-    ]).then(([mSnap, aSnap, gSnap, vSnap, lSnap, cSnap]) => {
+    ]).then(([mSnap, aSnap, gSnap, vSnap, lSnap, flSnap, arSnap, cSnap]) => {
       const membres = Object.fromEntries(entries(mSnap.val()));
       const cfg = cSnap.val() || { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 };
       const actions = entries(aSnap.val()).filter(([,a]) => a.resultat !== 'Échec');
       const gofasts = entries(gSnap.val()).filter(([,g]) => g.resultat !== 'Échec');
       const ventes = entries(vSnap.val()).filter(([,v]) => v.resultat !== 'Échec');
       const labos = entries(lSnap.val()).filter(([,l]) => l.resultat !== 'Échec');
+      const fleecas = entries(flSnap.val()).filter(([,r]) => r.resultat !== 'Échec');
+      const armureries = entries(arSnap.val()).filter(([,r]) => r.resultat !== 'Échec');
 
-      let totalActions = 0, totalGofast = 0, totalVente = 0, totalLabo = 0;
+      let totalActions = 0, totalGofast = 0, totalVente = 0, totalLabo = 0, totalBraquages = 0;
       const partParMembre = {}; // part due (commission) par membre
 
       actions.forEach(([id, a]) => {
@@ -82,14 +86,17 @@
         totalLabo += montant;
         partParMembre[l.membre_id] = (partParMembre[l.membre_id] || 0) + (l.branche_qty || 0) * (cfg.taux_branche || 0);
       });
+      fleecas.forEach(([id, r]) => { totalBraquages += (r.montant || 0); }); // pas de part individuelle
+      armureries.forEach(([id, r]) => { totalBraquages += (r.montant || 0); });
 
-      const totalGeneral = totalActions + totalGofast + totalVente + totalLabo;
+      const totalGeneral = totalActions + totalGofast + totalVente + totalLabo + totalBraquages;
 
       document.getElementById('stats').innerHTML = `
         <div class="stat"><div class="v">${fmtMoney(totalGeneral)}</div><div class="l">Total réel gagné (groupe)</div></div>
         <div class="stat"><div class="v">${fmtMoney(totalActions)}</div><div class="l">🏴‍☠️ Actions</div></div>
         <div class="stat"><div class="v">${fmtMoney(totalGofast)}</div><div class="l">🏠 Cambriolage</div></div>
         <div class="stat"><div class="v">${fmtMoney(totalVente + totalLabo)}</div><div class="l">💊 Vente + Labo</div></div>
+        <div class="stat"><div class="v">${fmtMoney(totalBraquages)}</div><div class="l">🏦 Fleeca + 🔫 Armurerie</div></div>
       `;
 
       const rows = Object.entries(partParMembre)
