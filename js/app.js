@@ -171,17 +171,18 @@ async function ensureActiveWeek() {
 
 // Calcule le solde d'argent sale / propre depuis toutes les sources Firebase
 async function computeSoldes() {
-  const [aSnap, gSnap, vSnap, cSnap, argSaleSnap, argPropreSnap, blanchSnap, payeSnap] = await Promise.all([
+  const [aSnap, gSnap, vSnap, lSnap, cSnap, argSaleSnap, argPropreSnap, blanchSnap, payeSnap] = await Promise.all([
     db.ref('actions').get(),
     db.ref('cambriolages').get(),
     db.ref('ventes').get(),
+    db.ref('labos').get(),
     db.ref('config').get(),
     db.ref('argent_sale').get(),
     db.ref('argent_propre').get(),
     db.ref('blanchiments').get(),
     db.ref('payes').get(),
   ]);
-  const cfg = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25 }, cSnap.val() || {});
+  const cfg = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 }, cSnap.val() || {});
 
   let solde_sale = 0, solde_propre = 0;
   const parMembre = {}; // gains bruts par membre (avant paye)
@@ -200,6 +201,11 @@ async function computeSoldes() {
     const gain = (v.qty || 0) * cfg.taux_pochon;
     solde_sale += gain;
     parMembre[v.membre_id] = (parMembre[v.membre_id] || 0) + gain;
+  });
+  entries(lSnap.val()).forEach(([id, l]) => {
+    const gain = cfg.taux_branche || 0;
+    solde_sale += gain;
+    parMembre[l.membre_id] = (parMembre[l.membre_id] || 0) + gain;
   });
 
   entries(argSaleSnap.val()).forEach(([id, m]) => {

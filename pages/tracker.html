@@ -19,6 +19,7 @@
       <button data-tab="actions" class="active">🏴‍☠️ Action</button>
       <button data-tab="gofast">🏠 Cambriolage</button>
       <button data-tab="vente">💊 Vente</button>
+      <button data-tab="labo">🧪 Labo</button>
     </div>
 
     <!-- ACTIONS -->
@@ -80,6 +81,33 @@
         <div class="grand" id="v-grand"></div>
       </div>
     </div>
+
+    <!-- LABO -->
+    <div class="tabpanel" id="panel-labo">
+      <div class="card">
+        <h3>Nouvelle récolte</h3>
+        <form class="entry" id="form-labo">
+          <div class="field"><label>Membre</label><select id="l-member" required></select></div>
+          <div class="field"><label>Fertilisant utilisé</label><input type="number" id="l-fertilisant" min="0" step="1" value="0"></div>
+          <div class="field"><label>Eau utilisée</label><input type="number" id="l-eau" min="0" step="1" value="0"></div>
+          <div class="field"><label>Graines de strawberry</label><input type="number" id="l-graines" min="0" step="1" value="0"></div>
+          <div class="field"><label>Pots utilisés</label><input type="number" id="l-pots" min="0" step="1" value="0"></div>
+          <div class="field"><label>Nom de la branche récoltée</label><input type="text" id="l-branche" placeholder="Ex: Branche #12" required></div>
+          <div class="field"><label>Note</label><input type="text" id="l-note" placeholder="optionnel"></div>
+          <button class="submit" type="submit">Enregistrer la récolte</button>
+        </form>
+        <div class="note-hint" id="l-rate-hint"></div>
+      </div>
+      <div class="card">
+        <h3>Historique</h3>
+        <table>
+          <thead><tr><th>Membre</th><th>Branche</th><th>Fertilisant</th><th>Eau</th><th>Graines</th><th>Pots</th><th>Gain</th><th></th></tr></thead>
+          <tbody id="l-table"></tbody>
+        </table>
+        <div class="totals" id="l-totals"></div>
+        <div class="grand" id="l-grand"></div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -109,7 +137,7 @@
         .filter(([id, m]) => m.actif !== false)
         .map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`)
         .join('') || '<option value="">Aucun membre — ajoute-le dans Admin</option>';
-      ['a-member', 'g-member', 'v-member'].forEach(sid => {
+      ['a-member', 'g-member', 'v-member', 'l-member'].forEach(sid => {
         const sel = document.getElementById(sid);
         const cur = sel.value;
         sel.innerHTML = opts;
@@ -121,6 +149,7 @@
       document.getElementById('a-rate-hint').textContent = `Taux actuel : ${config.taux_action_pct}% du montant (épicerie, ATM, go fast) reversé au membre.`;
       document.getElementById('g-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_cambriolage)} par cambriolage.`;
       document.getElementById('v-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_pochon)} par pochon vendu.`;
+      document.getElementById('l-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_branche)} par branche récoltée. Les quantités saisies sont retirées automatiquement du stock (catégorie Labo) si les produits existent.`;
     }
 
     function renderTotalsChips(elId, totals) {
@@ -245,6 +274,83 @@
       db.ref('ventes/' + uid()).set({ membre_id, qty, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
       document.getElementById('v-qty').value = '1';
       document.getElementById('v-note').value = '';
+    });
+
+    // ---- LABO ----
+    db.ref('labos').on('value', snap => {
+      const rows = entries(snap.val());
+      const tbody = document.getElementById('l-table');
+      const totals = {}; let grand = 0;
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty">Aucune récolte enregistrée.</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.slice().reverse().map(([id, l]) => {
+          const m = membres[l.membre_id];
+          const gain = config.taux_branche || 0;
+          totals[l.membre_id] = (totals[l.membre_id] || 0) + gain;
+          grand += gain;
+          const g = m ? gradeInfo(m.grade) : null;
+          return `<tr>
+            <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
+            <td>🌿 ${l.branche_nom || '—'}</td>
+            <td>${l.fertilisant || 0}</td>
+            <td>${l.eau || 0}</td>
+            <td>${l.graines || 0}</td>
+            <td>${l.pots || 0}</td>
+            <td class="amt">${fmtMoney(gain)}</td>
+            <td><button class="del" data-id="${id}" data-type="labos">✕</button></td>
+          </tr>`;
+        }).join('');
+      }
+      renderTotalsChips('l-totals', totals);
+      document.getElementById('l-grand').textContent = 'Total équipe : ' + fmtMoney(grand);
+    });
+
+    // Retire au mieux les quantités saisies du stock (catégorie "Labo"), sans jamais bloquer l'enregistrement
+    async function deduireStockLabo({ fertilisant, eau, graines, pots }) {
+      try {
+        const stockSnap = await db.ref('stock').get();
+        const cats = entries(stockSnap.val());
+        const catLabo = cats.find(([id, c]) => (c.nom || '').toLowerCase().includes('labo'));
+        if (!catLabo) return;
+        const [catId, cat] = catLabo;
+        const produits = entries(cat.produits);
+        const conso = [
+          { match: 'fertilisant', qty: fertilisant },
+          { match: 'eau', qty: eau },
+          { match: 'graine', qty: graines },
+          { match: 'pot', qty: pots },
+        ];
+        for (const c of conso) {
+          if (!c.qty) continue;
+          const prod = produits.find(([pid, p]) => (p.nom || '').toLowerCase().includes(c.match));
+          if (!prod) continue;
+          const [pid, p] = prod;
+          const ref = db.ref(`stock/${catId}/produits/${pid}/stock`);
+          const cur = (await ref.get()).val() || 0;
+          await ref.set(Math.max(0, cur - c.qty));
+        }
+      } catch (err) {
+        console.error('deduireStockLabo', err); // jamais bloquant
+      }
+    }
+
+    document.getElementById('form-labo').addEventListener('submit', e => {
+      e.preventDefault();
+      const membre_id = document.getElementById('l-member').value;
+      const fertilisant = parseInt(document.getElementById('l-fertilisant').value, 10) || 0;
+      const eau = parseInt(document.getElementById('l-eau').value, 10) || 0;
+      const graines = parseInt(document.getElementById('l-graines').value, 10) || 0;
+      const pots = parseInt(document.getElementById('l-pots').value, 10) || 0;
+      const branche_nom = document.getElementById('l-branche').value.trim();
+      const note = document.getElementById('l-note').value.trim();
+      if (!membre_id || !branche_nom) return;
+      db.ref('labos/' + uid()).set({
+        membre_id, fertilisant, eau, graines, pots, branche_nom, note,
+        date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId
+      });
+      deduireStockLabo({ fertilisant, eau, graines, pots });
+      document.getElementById('form-labo').reset();
     });
 
     // ---- delete (délégué) ----
