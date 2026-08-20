@@ -18,6 +18,7 @@
     <div class="tabs">
       <button data-tab="semaines" class="active">🗓️ Semaines</button>
       <button data-tab="taux">💰 Taux</button>
+      <button data-tab="quotas">📋 Quotas</button>
       <button data-tab="membres">👒 Membres</button>
       <button data-tab="stockadmin">📦 Stock</button>
       <button data-tab="permissions">👁️ Permissions</button>
@@ -53,6 +54,23 @@
         </div>
         <div class="note-hint">Action = % du montant total saisi. Cambriolage/Vente/Labo = tarif fixe par unité, indépendant du montant total (qui appartient entièrement au groupe).</div>
         <div style="margin-top:16px;"><button class="submit" id="cfg-save">Enregistrer</button></div>
+      </div>
+    </div>
+
+    <!-- QUOTAS -->
+    <div class="tabpanel" id="panel-quotas">
+      <div class="card">
+        <h3>Objectifs hebdomadaires par catégorie</h3>
+        <div class="grid cols-3">
+          <div class="field"><label>🏴‍☠️ Actions</label><input type="number" id="q-actions" min="0" step="1"></div>
+          <div class="field"><label>🏠 Cambriolages</label><input type="number" id="q-cambriolage" min="0" step="1"></div>
+          <div class="field"><label>💊 Ventes</label><input type="number" id="q-vente" min="0" step="1"></div>
+          <div class="field"><label>🧪 Récoltes Labo</label><input type="number" id="q-labo" min="0" step="1"></div>
+          <div class="field"><label>🏦 Fleeca</label><input type="number" id="q-fleeca" min="0" step="1"></div>
+          <div class="field"><label>🔫 Armurerie</label><input type="number" id="q-armurerie" min="0" step="1"></div>
+        </div>
+        <div class="note-hint">Un objectif à 0 ou vide n'affiche pas de barre de progression pour cette catégorie. Remis à zéro à chaque nouvelle semaine.</div>
+        <div style="margin-top:16px;"><button class="submit" id="q-save">Enregistrer</button></div>
       </div>
     </div>
 
@@ -177,6 +195,31 @@
         ...(isNaN(taux_branche) ? {} : { taux_branche }),
       });
       toast('Taux enregistrés.');
+    });
+
+    // ---- quotas par catégorie ----
+    const QUOTA_FIELDS = {
+      actions: 'q-actions',
+      cambriolage: 'q-cambriolage',
+      vente: 'q-vente',
+      labo: 'q-labo',
+      fleeca: 'q-fleeca',
+      armurerie: 'q-armurerie',
+    };
+    db.ref('config/quotas').on('value', snap => {
+      const q = snap.val() || {};
+      Object.entries(QUOTA_FIELDS).forEach(([key, id]) => {
+        document.getElementById(id).value = q[key] || '';
+      });
+    });
+    document.getElementById('q-save').addEventListener('click', () => {
+      const update = {};
+      Object.entries(QUOTA_FIELDS).forEach(([key, id]) => {
+        const v = parseInt(document.getElementById(id).value, 10);
+        update[key] = isNaN(v) ? 0 : v;
+      });
+      db.ref('config/quotas').set(update);
+      toast('Objectifs enregistrés.');
     });
 
     // ---- membres ----

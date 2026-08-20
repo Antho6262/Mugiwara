@@ -6,8 +6,11 @@
 <title>Les Mugiwara — Stats & Quotas</title>
 <link rel="stylesheet" href="../css/style.css">
 <style>
-  .bar-wrap{background:var(--bg-1);border:1px solid var(--line);border-radius:20px;height:14px;overflow:hidden;flex:1;min-width:120px;}
+  .bar-wrap{background:var(--bg-1);border:1px solid var(--line);border-radius:20px;height:10px;overflow:hidden;width:70px;}
   .bar-fill{height:100%;background:linear-gradient(90deg, var(--sunset-2), var(--gold));}
+  .quota-cell{display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .quota-cell .n{font-family:'JetBrains Mono',monospace;font-size:12px;}
+  .quota-cell .n.ok{color:var(--gold);font-weight:600;}
 </style>
 </head>
 <body>
@@ -37,17 +40,21 @@
     </div>
 
     <div class="tabpanel" id="panel-quotas">
-      <div class="card" id="quota-cfg-card">
-        <h3>Objectif hebdomadaire</h3>
-        <form class="entry" id="form-quota-cfg">
-          <div class="field"><label>Nombre d'activités / semaine</label><input type="number" id="q-cible" min="0" step="1"></div>
-          <button class="submit" type="submit">Enregistrer</button>
-        </form>
-        <div class="note-hint">Compte le total d'actions + go fast + ventes enregistrés depuis lundi.</div>
-      </div>
+      <div class="note-hint" style="margin-bottom:16px;">Les objectifs par catégorie se configurent dans Admin → Quotas. Remis à zéro à chaque nouvelle semaine.</div>
       <div class="card">
         <h3>Progression de la semaine</h3>
-        <table><thead><tr><th>Membre</th><th>Fait</th><th>Objectif</th><th style="width:35%;">Progression</th></tr></thead><tbody id="quota-body"></tbody></table>
+        <table style="font-size:13px;">
+          <thead><tr>
+            <th>Membre</th>
+            <th>🏴‍☠️ Actions</th>
+            <th>🏠 Cambriolage</th>
+            <th>💊 Vente</th>
+            <th>🧪 Labo</th>
+            <th>🏦 Fleeca</th>
+            <th>🔫 Armurerie</th>
+          </tr></thead>
+          <tbody id="quota-body"></tbody>
+        </table>
       </div>
     </div>
   </main>
@@ -68,8 +75,6 @@
         document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
       });
     });
-
-    if (!canManage(membre)) document.getElementById('quota-cfg-card').style.display = 'none';
 
     Promise.all([
       db.ref('membres').get(),
@@ -109,44 +114,51 @@
       document.getElementById('top-vente').innerHTML = topList(parVente, '💊');
       document.getElementById('top-gofast').innerHTML = topList(parGofast, '🏠');
 
-      // ---- Quotas ----
-      const cible = cfg.quota_cible || 0;
-      document.getElementById('q-cible').value = cible;
+      // ---- Quotas (par catégorie) ----
+      const quotas = cfg.quotas || {};
       const activeWeekId = cfg.semaine_active_id;
 
-      const compte = {};
-      const add = (list, key) => list.forEach(([, item]) => {
-        if (item.semaine_id === activeWeekId) compte[item[key]] = (compte[item[key]] || 0) + 1;
+      const compteCat = { actions: {}, cambriolage: {}, vente: {}, labo: {}, fleeca: {}, armurerie: {} };
+      const add = (list, cat, key) => list.forEach(([, item]) => {
+        if (item.semaine_id === activeWeekId) compteCat[cat][item[key]] = (compteCat[cat][item[key]] || 0) + 1;
       });
-      add(actions, 'membre_id'); add(gofasts, 'membre_id'); add(ventes, 'membre_id'); add(labos, 'membre_id');
-
-      // Fleeca / Armurerie : compte 1 action pour chaque membre coché
-      [...fleecas, ...armureries].forEach(([, r]) => {
+      add(actions, 'actions', 'membre_id');
+      add(gofasts, 'cambriolage', 'membre_id');
+      add(ventes, 'vente', 'membre_id');
+      add(labos, 'labo', 'membre_id');
+      fleecas.forEach(([, r]) => {
         if (r.semaine_id !== activeWeekId) return;
-        (r.membres_ids || []).forEach(mid => { compte[mid] = (compte[mid] || 0) + 1; });
+        (r.membres_ids || []).forEach(mid => { compteCat.fleeca[mid] = (compteCat.fleeca[mid] || 0) + 1; });
       });
+      armureries.forEach(([, r]) => {
+        if (r.semaine_id !== activeWeekId) return;
+        (r.membres_ids || []).forEach(mid => { compteCat.armurerie[mid] = (compteCat.armurerie[mid] || 0) + 1; });
+      });
+
+      const cell = (cat, id) => {
+        const cible = quotas[cat] || 0;
+        const fait = compteCat[cat][id] || 0;
+        if (cible <= 0) return `<td><div class="quota-cell"><span class="n">${fait}</span></div></td>`;
+        const pct = Math.min(100, Math.round(fait / cible * 100));
+        return `<td><div class="quota-cell">
+          <span class="n ${fait >= cible ? 'ok' : ''}">${fait}/${cible}</span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;"></div></div>
+        </div></td>`;
+      };
 
       const rows = Object.entries(membres).filter(([,m]) => m.actif !== false).map(([id, m]) => {
-        const fait = compte[id] || 0;
-        const pct = cible > 0 ? Math.min(100, Math.round(fait / cible * 100)) : 0;
         const g = gradeInfo(m.grade);
         return `<tr>
           <td>${g.emoji} ${m.prenom}</td>
-          <td>${fait}</td>
-          <td>${cible || '—'}</td>
-          <td><div style="display:flex;align-items:center;gap:8px;">
-            <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;"></div></div>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;">${pct}%</span>
-          </div></td>
+          ${cell('actions', id)}
+          ${cell('cambriolage', id)}
+          ${cell('vente', id)}
+          ${cell('labo', id)}
+          ${cell('fleeca', id)}
+          ${cell('armurerie', id)}
         </tr>`;
       }).join('');
-      document.getElementById('quota-body').innerHTML = rows || `<tr><td colspan="4" class="empty">Aucun membre.</td></tr>`;
-    });
-
-    document.getElementById('form-quota-cfg').addEventListener('submit', e => {
-      e.preventDefault();
-      const v = parseInt(document.getElementById('q-cible').value, 10);
-      db.ref('config/quota_cible').set(isNaN(v) ? 0 : v).then(() => toast('Objectif enregistré — recharge la page.'));
+      document.getElementById('quota-body').innerHTML = rows || `<tr><td colspan="7" class="empty">Aucun membre.</td></tr>`;
     });
   }
 </script>
