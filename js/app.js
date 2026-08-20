@@ -187,22 +187,22 @@ async function computeSoldes() {
   let solde_sale = 0, solde_propre = 0;
   const parMembre = {}; // gains bruts par membre (avant paye)
 
-  entries(aSnap.val()).forEach(([id, a]) => {
+  entries(aSnap.val()).filter(([id, a]) => a.resultat !== 'Échec').forEach(([id, a]) => {
     const gain = (a.montant || 0) * (cfg.taux_action_pct / 100);
     solde_sale += gain;
     parMembre[a.membre_id] = (parMembre[a.membre_id] || 0) + gain;
   });
-  entries(gSnap.val()).forEach(([id, g]) => {
+  entries(gSnap.val()).filter(([id, g]) => g.resultat !== 'Échec').forEach(([id, g]) => {
     const gain = (g.count || 0) * cfg.taux_cambriolage;
     solde_sale += gain;
     parMembre[g.membre_id] = (parMembre[g.membre_id] || 0) + gain;
   });
-  entries(vSnap.val()).forEach(([id, v]) => {
+  entries(vSnap.val()).filter(([id, v]) => v.resultat !== 'Échec').forEach(([id, v]) => {
     const gain = (v.qty || 0) * cfg.taux_pochon;
     solde_sale += gain;
     parMembre[v.membre_id] = (parMembre[v.membre_id] || 0) + gain;
   });
-  entries(lSnap.val()).forEach(([id, l]) => {
+  entries(lSnap.val()).filter(([id, l]) => l.resultat !== 'Échec').forEach(([id, l]) => {
     const gain = (l.branche_qty || 0) * (cfg.taux_branche || 0);
     solde_sale += gain;
     parMembre[l.membre_id] = (parMembre[l.membre_id] || 0) + gain;

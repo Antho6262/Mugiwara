@@ -37,6 +37,10 @@
             </select>
           </div>
           <div class="field"><label>Montant total ($)</label><input type="number" id="a-montant" min="0" step="1" required></div>
+          <div class="field"><label>Résultat</label>
+            <select id="a-resultat"><option value="Réussite">✅ Réussite</option><option value="Échec">❌ Échec</option></select>
+          </div>
+          <div class="field" id="a-raison-wrap" style="display:none;"><label>Raison de l'échec</label><input type="text" id="a-raison" placeholder="optionnel"></div>
           <div class="field"><label>Note</label><input type="text" id="a-note" placeholder="optionnel"></div>
           <button class="submit" type="submit">Ajouter</button>
         </form>
@@ -44,7 +48,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membre</th><th>Type</th><th>Montant</th><th>Part</th><th>Note</th><th></th></tr></thead><tbody id="a-table"></tbody></table>
+        <table><thead><tr><th>Membre</th><th>Type</th><th>Montant</th><th>Résultat</th><th>Part</th><th>Note</th><th></th></tr></thead><tbody id="a-table"></tbody></table>
         <div class="totals" id="a-totals"></div>
         <div class="grand" id="a-grand"></div>
       </div>
@@ -57,6 +61,10 @@
         <form class="entry" id="form-gofast">
           <div class="field"><label>Membre</label><select id="g-member" required></select></div>
           <div class="field"><label>Nombre de cambriolages</label><input type="number" id="g-count" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Résultat</label>
+            <select id="g-resultat"><option value="Réussite">✅ Réussite</option><option value="Échec">❌ Échec</option></select>
+          </div>
+          <div class="field" id="g-raison-wrap" style="display:none;"><label>Raison de l'échec</label><input type="text" id="g-raison" placeholder="optionnel"></div>
           <div class="field"><label>Note</label><input type="text" id="g-note" placeholder="optionnel"></div>
           <button class="submit" type="submit">Ajouter</button>
         </form>
@@ -64,7 +72,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membre</th><th>Cambriolage</th><th>Gain</th><th>Note</th><th></th></tr></thead><tbody id="g-table"></tbody></table>
+        <table><thead><tr><th>Membre</th><th>Cambriolage</th><th>Résultat</th><th>Gain</th><th>Note</th><th></th></tr></thead><tbody id="g-table"></tbody></table>
         <div class="totals" id="g-totals"></div>
         <div class="grand" id="g-grand"></div>
       </div>
@@ -78,6 +86,10 @@
           <div class="field"><label>Membre</label><select id="v-member" required></select></div>
           <div class="field"><label>Produit</label><select id="v-produit"></select></div>
           <div class="field"><label>Pochons vendus 💊</label><input type="number" id="v-qty" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Résultat</label>
+            <select id="v-resultat"><option value="Réussite">✅ Réussite</option><option value="Échec">❌ Échec</option></select>
+          </div>
+          <div class="field" id="v-raison-wrap" style="display:none;"><label>Raison de l'échec</label><input type="text" id="v-raison" placeholder="optionnel"></div>
           <div class="field"><label>Note</label><input type="text" id="v-note" placeholder="optionnel"></div>
           <button class="submit" type="submit">Ajouter</button>
         </form>
@@ -85,7 +97,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membre</th><th>Produit</th><th>Pochons</th><th>Gain</th><th>Note</th><th></th></tr></thead><tbody id="v-table"></tbody></table>
+        <table><thead><tr><th>Membre</th><th>Produit</th><th>Pochons</th><th>Résultat</th><th>Gain</th><th>Note</th><th></th></tr></thead><tbody id="v-table"></tbody></table>
         <div class="totals" id="v-totals"></div>
         <div class="grand" id="v-grand"></div>
       </div>
@@ -102,6 +114,10 @@
           <div class="field"><label>Graines de strawberry</label><input type="number" id="l-graines" min="0" step="1" value="0"></div>
           <div class="field"><label>Pots utilisés</label><input type="number" id="l-pots" min="0" step="1" value="0"></div>
           <div class="field"><label>Nombre de branches récoltées</label><input type="number" id="l-branche" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Résultat</label>
+            <select id="l-resultat"><option value="Réussite">✅ Réussite</option><option value="Échec">❌ Échec</option></select>
+          </div>
+          <div class="field" id="l-raison-wrap" style="display:none;"><label>Raison de l'échec</label><input type="text" id="l-raison" placeholder="optionnel"></div>
           <div class="field"><label>Note</label><input type="text" id="l-note" placeholder="optionnel"></div>
           <button class="submit" type="submit">Enregistrer la récolte</button>
         </form>
@@ -110,7 +126,7 @@
       <div class="card">
         <h3>Historique</h3>
         <table>
-          <thead><tr><th>Membre</th><th>Branches</th><th>Fertilisant</th><th>Eau</th><th>Graines</th><th>Pots</th><th>Gain</th><th></th></tr></thead>
+          <thead><tr><th>Membre</th><th>Branches</th><th>Fertilisant</th><th>Eau</th><th>Graines</th><th>Pots</th><th>Résultat</th><th>Gain</th><th></th></tr></thead>
           <tbody id="l-table"></tbody>
         </table>
         <div class="totals" id="l-totals"></div>
@@ -141,6 +157,12 @@
       });
     });
 
+    ['a', 'g', 'v', 'l'].forEach(prefix => {
+      document.getElementById(prefix + '-resultat').addEventListener('change', e => {
+        document.getElementById(prefix + '-raison-wrap').style.display = e.target.value === 'Échec' ? 'block' : 'none';
+      });
+    });
+
     function fillMemberSelects() {
       const opts = Object.entries(membres)
         .filter(([id, m]) => m.actif !== false)
@@ -156,9 +178,9 @@
 
     function renderHints() {
       document.getElementById('a-rate-hint').textContent = `Taux actuel : ${config.taux_action_pct}% du montant (épicerie, ATM, go fast) reversé au membre.`;
-      document.getElementById('g-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_cambriolage)} par cambriolage.`;
-      document.getElementById('v-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_pochon)} par pochon vendu.`;
-      document.getElementById('l-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_branche)} par branche récoltée. Les quantités saisies sont retirées automatiquement du stock (catégorie Labo) si les produits existent.`;
+      document.getElementById('g-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_cambriolage)} par cambriolage. Consomme 1 outil de crochetage par cambriolage (même en cas d'échec), payé uniquement si réussite.`;
+      document.getElementById('v-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_pochon)} par pochon vendu. Le produit est retiré du stock même en cas d'échec, payé uniquement si réussite.`;
+      document.getElementById('l-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_branche)} par branche récoltée. Les quantités saisies sont retirées du stock même en cas d'échec (les ingrédients sont utilisés), payé uniquement si réussite.`;
     }
 
     function renderTotalsChips(elId, totals) {
@@ -181,7 +203,8 @@
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, a]) => {
           const m = membres[a.membre_id];
-          const gain = (a.montant || 0) * (config.taux_action_pct / 100);
+          const reussite = a.resultat !== 'Échec';
+          const gain = reussite ? (a.montant || 0) * (config.taux_action_pct / 100) : 0;
           totals[a.membre_id] = (totals[a.membre_id] || 0) + gain;
           grand += gain;
           const g = m ? gradeInfo(m.grade) : null;
@@ -189,6 +212,7 @@
             <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
             <td>${a.type || '—'}</td>
             <td>${fmtMoney(a.montant)}</td>
+            <td>${reussite ? '✅ Réussite' : `❌ Échec${a.raison ? ' — ' + a.raison : ''}`}</td>
             <td class="amt">${fmtMoney(gain)}</td>
             <td>${a.note || '—'}</td>
             <td><button class="del" data-id="${id}" data-type="actions">✕</button></td>
@@ -204,11 +228,16 @@
       const membre_id = document.getElementById('a-member').value;
       const type = document.getElementById('a-type').value;
       const montant = parseFloat(document.getElementById('a-montant').value);
+      const resultat = document.getElementById('a-resultat').value;
+      const raison = document.getElementById('a-raison').value.trim();
       const note = document.getElementById('a-note').value.trim();
       if (!membre_id || isNaN(montant)) return;
-      db.ref('actions/' + uid()).set({ membre_id, type, montant, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
+      db.ref('actions/' + uid()).set({ membre_id, type, montant, resultat, raison, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
       document.getElementById('a-montant').value = '';
       document.getElementById('a-note').value = '';
+      document.getElementById('a-raison').value = '';
+      document.getElementById('a-raison-wrap').style.display = 'none';
+      document.getElementById('a-resultat').value = 'Réussite';
     });
 
     // ---- GO FAST ----
@@ -221,13 +250,15 @@
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, gf]) => {
           const m = membres[gf.membre_id];
-          const gain = (gf.count || 0) * config.taux_cambriolage;
+          const reussite = gf.resultat !== 'Échec';
+          const gain = reussite ? (gf.count || 0) * config.taux_cambriolage : 0;
           totals[gf.membre_id] = (totals[gf.membre_id] || 0) + gain;
           grand += gain;
           const g = m ? gradeInfo(m.grade) : null;
           return `<tr>
             <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
             <td>🏠 ${gf.count}</td>
+            <td>${reussite ? '✅ Réussite' : `❌ Échec${gf.raison ? ' — ' + gf.raison : ''}`}</td>
             <td class="amt">${fmtMoney(gain)}</td>
             <td>${gf.note || '—'}</td>
             <td><button class="del" data-id="${id}" data-type="cambriolages">✕</button></td>
@@ -242,12 +273,38 @@
       e.preventDefault();
       const membre_id = document.getElementById('g-member').value;
       const count = parseInt(document.getElementById('g-count').value, 10);
+      const resultat = document.getElementById('g-resultat').value;
+      const raison = document.getElementById('g-raison').value.trim();
       const note = document.getElementById('g-note').value.trim();
       if (!membre_id || isNaN(count) || count < 1) return;
-      db.ref('cambriolages/' + uid()).set({ membre_id, count, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
+      db.ref('cambriolages/' + uid()).set({ membre_id, count, resultat, raison, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
+      deduireOutilCrochetage(count);
       document.getElementById('g-count').value = '1';
       document.getElementById('g-note').value = '';
+      document.getElementById('g-raison').value = '';
+      document.getElementById('g-raison-wrap').style.display = 'none';
+      document.getElementById('g-resultat').value = 'Réussite';
     });
+
+    // Retire "count" outils de crochetage du stock (catégorie "Matériel"), sans jamais bloquer l'enregistrement
+    async function deduireOutilCrochetage(count) {
+      try {
+        const stockSnap = await db.ref('stock').get();
+        const cats = entries(stockSnap.val());
+        const catMateriel = cats.find(([id, c]) => (c.nom || '').toLowerCase().includes('mat'));
+        if (!catMateriel) return;
+        const [catId, cat] = catMateriel;
+        const produits = entries(cat.produits);
+        const prod = produits.find(([pid, p]) => (p.nom || '').toLowerCase().includes('crochet'));
+        if (!prod) return;
+        const [pid] = prod;
+        const ref = db.ref(`stock/${catId}/produits/${pid}/stock`);
+        const cur = (await ref.get()).val() || 0;
+        await ref.set(Math.max(0, cur - count));
+      } catch (err) {
+        console.error('deduireOutilCrochetage', err); // jamais bloquant
+      }
+    }
 
     // ---- VENTE ----
     db.ref('ventes').on('value', snap => {
@@ -259,7 +316,8 @@
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, v]) => {
           const m = membres[v.membre_id];
-          const gain = (v.qty || 0) * config.taux_pochon;
+          const reussite = v.resultat !== 'Échec';
+          const gain = reussite ? (v.qty || 0) * config.taux_pochon : 0;
           totals[v.membre_id] = (totals[v.membre_id] || 0) + gain;
           grand += gain;
           const g = m ? gradeInfo(m.grade) : null;
@@ -267,6 +325,7 @@
             <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
             <td>${v.produit_nom || '—'}</td>
             <td>💊 ${v.qty}</td>
+            <td>${reussite ? '✅ Réussite' : `❌ Échec${v.raison ? ' — ' + v.raison : ''}`}</td>
             <td class="amt">${fmtMoney(gain)}</td>
             <td>${v.note || '—'}</td>
             <td><button class="del" data-id="${id}" data-type="ventes">✕</button></td>
@@ -285,15 +344,20 @@
       const produit_cat = produitSel.value ? produitSel.value.split('|')[0] : '';
       const produit_id = produitSel.value ? produitSel.value.split('|')[1] : '';
       const qty = parseInt(document.getElementById('v-qty').value, 10);
+      const resultat = document.getElementById('v-resultat').value;
+      const raison = document.getElementById('v-raison').value.trim();
       const note = document.getElementById('v-note').value.trim();
       if (!membre_id || isNaN(qty) || qty < 1) return;
-      db.ref('ventes/' + uid()).set({ membre_id, produit_nom, note, qty, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
+      db.ref('ventes/' + uid()).set({ membre_id, produit_nom, resultat, raison, note, qty, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
       if (produit_cat && produit_id) {
         const ref = db.ref(`stock/${produit_cat}/produits/${produit_id}/stock`);
         ref.get().then(s => ref.set(Math.max(0, (s.val() || 0) - qty))).catch(err => console.error(err));
       }
       document.getElementById('v-qty').value = '1';
       document.getElementById('v-note').value = '';
+      document.getElementById('v-raison').value = '';
+      document.getElementById('v-raison-wrap').style.display = 'none';
+      document.getElementById('v-resultat').value = 'Réussite';
     });
 
     // remplit le select produit (catégorie Stock contenant "drogue", sinon toutes les catégories)
@@ -321,7 +385,8 @@
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, l]) => {
           const m = membres[l.membre_id];
-          const gain = (l.branche_qty || 0) * (config.taux_branche || 0);
+          const reussite = l.resultat !== 'Échec';
+          const gain = reussite ? (l.branche_qty || 0) * (config.taux_branche || 0) : 0;
           totals[l.membre_id] = (totals[l.membre_id] || 0) + gain;
           grand += gain;
           const g = m ? gradeInfo(m.grade) : null;
@@ -332,6 +397,7 @@
             <td>${l.eau || 0}</td>
             <td>${l.graines || 0}</td>
             <td>${l.pots || 0}</td>
+            <td>${reussite ? '✅ Réussite' : `❌ Échec${l.raison ? ' — ' + l.raison : ''}`}</td>
             <td class="amt">${fmtMoney(gain)}</td>
             <td><button class="del" data-id="${id}" data-type="labos">✕</button></td>
           </tr>`;
@@ -378,15 +444,19 @@
       const graines = parseInt(document.getElementById('l-graines').value, 10) || 0;
       const pots = parseInt(document.getElementById('l-pots').value, 10) || 0;
       const branche_qty = parseInt(document.getElementById('l-branche').value, 10);
+      const resultat = document.getElementById('l-resultat').value;
+      const raison = document.getElementById('l-raison').value.trim();
       const note = document.getElementById('l-note').value.trim();
       if (!membre_id || isNaN(branche_qty) || branche_qty < 1) return;
       db.ref('labos/' + uid()).set({
-        membre_id, fertilisant, eau, graines, pots, branche_qty, note,
+        membre_id, fertilisant, eau, graines, pots, branche_qty, resultat, raison, note,
         date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId
       });
       deduireStockLabo({ fertilisant, eau, graines, pots });
       document.getElementById('form-labo').reset();
       document.getElementById('l-branche').value = '1';
+      document.getElementById('l-raison-wrap').style.display = 'none';
+      document.getElementById('l-resultat').value = 'Réussite';
     });
 
     // ---- delete (délégué) ----

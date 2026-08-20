@@ -53,9 +53,9 @@
     ]).then(([mSnap, aSnap, gSnap, vSnap, cSnap]) => {
       const membres = Object.fromEntries(entries(mSnap.val()));
       const cfg = cSnap.val() || { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25 };
-      const actions = entries(aSnap.val());
-      const gofasts = entries(gSnap.val());
-      const ventes = entries(vSnap.val());
+      const actions = entries(aSnap.val()).filter(([,a]) => a.resultat !== 'Échec');
+      const gofasts = entries(gSnap.val()).filter(([,g]) => g.resultat !== 'Échec');
+      const ventes = entries(vSnap.val()).filter(([,v]) => v.resultat !== 'Échec');
 
       let totalActions = 0, totalGofast = 0, totalVente = 0;
       const parMembre = {};
@@ -115,15 +115,15 @@
       const activeWeekId = cfg.semaine_active_id;
       const parMembreSemaine = {};
 
-      entries(aSnap.val()).filter(([,a]) => a.semaine_id === activeWeekId).forEach(([id, a]) => {
+      entries(aSnap.val()).filter(([,a]) => a.semaine_id === activeWeekId && a.resultat !== 'Échec').forEach(([id, a]) => {
         const gain = (a.montant || 0) * (cfg.taux_action_pct / 100);
         parMembreSemaine[a.membre_id] = (parMembreSemaine[a.membre_id] || 0) + gain;
       });
-      entries(gSnap.val()).filter(([,g]) => g.semaine_id === activeWeekId).forEach(([id, g]) => {
+      entries(gSnap.val()).filter(([,g]) => g.semaine_id === activeWeekId && g.resultat !== 'Échec').forEach(([id, g]) => {
         const gain = (g.count || 0) * cfg.taux_cambriolage;
         parMembreSemaine[g.membre_id] = (parMembreSemaine[g.membre_id] || 0) + gain;
       });
-      entries(vSnap.val()).filter(([,v]) => v.semaine_id === activeWeekId).forEach(([id, v]) => {
+      entries(vSnap.val()).filter(([,v]) => v.semaine_id === activeWeekId && v.resultat !== 'Échec').forEach(([id, v]) => {
         const gain = (v.qty || 0) * cfg.taux_pochon;
         parMembreSemaine[v.membre_id] = (parMembreSemaine[v.membre_id] || 0) + gain;
       });

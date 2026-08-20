@@ -80,9 +80,9 @@
     ]).then(([mSnap, aSnap, gSnap, vSnap, cSnap]) => {
       const membres = Object.fromEntries(entries(mSnap.val()));
       const cfg = cSnap.val() || {};
-      const actions = entries(aSnap.val());
-      const gofasts = entries(gSnap.val());
-      const ventes = entries(vSnap.val());
+      const actions = entries(aSnap.val()).filter(([,a]) => a.resultat !== 'Échec');
+      const gofasts = entries(gSnap.val()).filter(([,g]) => g.resultat !== 'Échec');
+      const ventes = entries(vSnap.val()).filter(([,v]) => v.resultat !== 'Échec');
 
       document.getElementById('stat-cards').innerHTML = `
         <div class="stat"><div class="v">${actions.length}</div><div class="l">🏴‍☠️ Actions totales</div></div>
