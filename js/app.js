@@ -101,27 +101,31 @@ function canManage(membre) {
   return isAdmin(membre) || gradeInfo(membre.grade).ordre <= 5;
 }
 
-function startOfWeekISO() {
-  const d = new Date();
-  const day = (d.getDay() + 6) % 7; // lundi = 0
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - day);
+// Renvoie le dimanche 19h le plus récent (passé ou en cours), en heure locale.
+function startOfWeekSunday7pmISO() {
+  const now = new Date();
+  const d = new Date(now);
+  d.setHours(19, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay()); // recule jusqu'au dimanche de cette semaine (getDay() : dimanche = 0)
+  d.setHours(19, 0, 0, 0); // setDate peut décaler l'heure lors d'un changement d'heure d'été/hiver
+  if (d.getTime() > now.getTime()) d.setDate(d.getDate() - 7); // ce dimanche 19h n'est pas encore passé → semaine précédente
   return d.toISOString();
 }
 
 // ------------------------------------------------------------
 // Semaines — création / clôture automatique, sans bot.
+// Cycle : dimanche 19h → dimanche 19h suivant.
 // Appelée à chaque chargement de page (initShell) : idempotente,
 // utilise une transaction Firebase pour éviter les doublons si
 // plusieurs personnes se connectent au même moment.
 // ------------------------------------------------------------
 async function ensureActiveWeek() {
   const now = new Date();
-  const mondayISO = startOfWeekISO();
-  const monday = new Date(mondayISO);
-  const nextMonday = new Date(monday);
-  nextMonday.setDate(nextMonday.getDate() + 7);
-  const finISO = nextMonday.toISOString();
+  const debutISO = startOfWeekSunday7pmISO();
+  const debut = new Date(debutISO);
+  const fin = new Date(debut);
+  fin.setDate(fin.getDate() + 7);
+  const finISO = fin.toISOString();
   const nowISO = now.toISOString();
 
   // Semaine active déclarée dans la config
@@ -143,7 +147,7 @@ async function ensureActiveWeek() {
   // Cherche si une semaine correspondant à "cette semaine" existe déjà (évite les doublons)
   const allSnap = await db.ref('semaines').get();
   const all = entries(allSnap.val());
-  const existing = all.find(([id, w]) => w.debut === mondayISO);
+  const existing = all.find(([id, w]) => w.debut === debutISO);
 
   let newId;
   if (existing) {
@@ -151,8 +155,8 @@ async function ensureActiveWeek() {
   } else {
     newId = uid();
     await db.ref('semaines/' + newId).set({
-      nom: 'Semaine du ' + monday.toLocaleDateString('fr-FR'),
-      debut: mondayISO,
+      nom: 'Semaine du ' + debut.toLocaleDateString('fr-FR') + ' 19h',
+      debut: debutISO,
       fin: finISO,
       bloquee: false,
       createdAt: nowISO
