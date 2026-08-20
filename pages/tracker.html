@@ -148,7 +148,7 @@
   const membre = initShell('tracker', 'Tracker');
   if (membre) {
     let membres = {};
-    let config = { taux_action_pct: 25, taux_cambriolage: 25, taux_pochon: 25, taux_branche: 25 };
+    let config = { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 };
     let activeWeekId = null;
     db.ref('config/semaine_active_id').on('value', s => { activeWeekId = s.val(); });
 
@@ -182,9 +182,9 @@
 
     function renderHints() {
       document.getElementById('a-rate-hint').textContent = `Taux actuel : ${config.taux_action_pct}% du montant total reversé au membre.`;
-      document.getElementById('g-rate-hint').textContent = `Taux actuel : ${config.taux_cambriolage}% du montant total reversé au membre. Consomme 1 outil de crochetage par cambriolage (même en cas d'échec).`;
-      document.getElementById('v-rate-hint').textContent = `Taux actuel : ${config.taux_pochon}% du montant total reversé au membre. Le produit est retiré du stock même en cas d'échec.`;
-      document.getElementById('l-rate-hint').textContent = `Taux actuel : ${config.taux_branche}% du montant total reversé au membre. Les ingrédients saisis sont retirés du stock même en cas d'échec.`;
+      document.getElementById('g-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_cambriolage)} par cambriolage (tarif fixe). Consomme 1 outil de crochetage par cambriolage (même en cas d'échec).`;
+      document.getElementById('v-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_pochon)} par pochon vendu (tarif fixe). Le produit est retiré du stock même en cas d'échec.`;
+      document.getElementById('l-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_branche)} par branche récoltée (tarif fixe). Les ingrédients saisis sont retirés du stock même en cas d'échec.`;
     }
 
     function renderTotalsChips(elId, totals) {
@@ -255,7 +255,7 @@
         tbody.innerHTML = rows.slice().reverse().map(([id, gf]) => {
           const m = membres[gf.membre_id];
           const reussite = gf.resultat !== 'Échec';
-          const part = reussite ? (gf.montant || 0) * (config.taux_cambriolage / 100) : 0;
+          const part = reussite ? (gf.count || 0) * config.taux_cambriolage : 0;
           totals[gf.membre_id] = (totals[gf.membre_id] || 0) + (gf.montant || 0);
           grand += (gf.montant || 0);
           const g = m ? gradeInfo(m.grade) : null;
@@ -324,7 +324,7 @@
         tbody.innerHTML = rows.slice().reverse().map(([id, v]) => {
           const m = membres[v.membre_id];
           const reussite = v.resultat !== 'Échec';
-          const part = reussite ? (v.montant || 0) * (config.taux_pochon / 100) : 0;
+          const part = reussite ? (v.qty || 0) * config.taux_pochon : 0;
           totals[v.membre_id] = (totals[v.membre_id] || 0) + (v.montant || 0);
           grand += (v.montant || 0);
           const g = m ? gradeInfo(m.grade) : null;
@@ -396,7 +396,7 @@
         tbody.innerHTML = rows.slice().reverse().map(([id, l]) => {
           const m = membres[l.membre_id];
           const reussite = l.resultat !== 'Échec';
-          const part = reussite ? (l.montant || 0) * ((config.taux_branche || 0) / 100) : 0;
+          const part = reussite ? (l.branche_qty || 0) * (config.taux_branche || 0) : 0;
           totals[l.membre_id] = (totals[l.membre_id] || 0) + (l.montant || 0);
           grand += (l.montant || 0);
           const g = m ? gradeInfo(m.grade) : null;
@@ -487,7 +487,7 @@
       fillMemberSelects();
     });
     db.ref('config').on('value', snap => {
-      config = Object.assign({ taux_action_pct: 25, taux_cambriolage: 25, taux_pochon: 25, taux_branche: 25 }, snap.val() || {});
+      config = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 }, snap.val() || {});
       renderHints();
     });
   }

@@ -53,7 +53,7 @@
       db.ref('config').get()
     ]).then(([mSnap, aSnap, gSnap, vSnap, lSnap, cSnap]) => {
       const membres = Object.fromEntries(entries(mSnap.val()));
-      const cfg = cSnap.val() || { taux_action_pct: 25, taux_cambriolage: 25, taux_pochon: 25, taux_branche: 25 };
+      const cfg = cSnap.val() || { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 };
       const actions = entries(aSnap.val()).filter(([,a]) => a.resultat !== 'Échec');
       const gofasts = entries(gSnap.val()).filter(([,g]) => g.resultat !== 'Échec');
       const ventes = entries(vSnap.val()).filter(([,v]) => v.resultat !== 'Échec');
@@ -70,17 +70,17 @@
       gofasts.forEach(([id, g]) => {
         const montant = g.montant || 0;
         totalGofast += montant;
-        partParMembre[g.membre_id] = (partParMembre[g.membre_id] || 0) + montant * (cfg.taux_cambriolage / 100);
+        partParMembre[g.membre_id] = (partParMembre[g.membre_id] || 0) + (g.count || 0) * cfg.taux_cambriolage;
       });
       ventes.forEach(([id, v]) => {
         const montant = v.montant || 0;
         totalVente += montant;
-        partParMembre[v.membre_id] = (partParMembre[v.membre_id] || 0) + montant * (cfg.taux_pochon / 100);
+        partParMembre[v.membre_id] = (partParMembre[v.membre_id] || 0) + (v.qty || 0) * cfg.taux_pochon;
       });
       labos.forEach(([id, l]) => {
         const montant = l.montant || 0;
         totalLabo += montant;
-        partParMembre[l.membre_id] = (partParMembre[l.membre_id] || 0) + montant * ((cfg.taux_branche || 0) / 100);
+        partParMembre[l.membre_id] = (partParMembre[l.membre_id] || 0) + (l.branche_qty || 0) * (cfg.taux_branche || 0);
       });
 
       const totalGeneral = totalActions + totalGofast + totalVente + totalLabo;
@@ -119,7 +119,7 @@
       db.ref('config').get()
     ]).then(([mSnap, aSnap, gSnap, vSnap, lSnap, cSnap]) => {
       const membres = Object.fromEntries(entries(mSnap.val()));
-      const cfg = cSnap.val() || { taux_action_pct: 25, taux_cambriolage: 25, taux_pochon: 25, taux_branche: 25 };
+      const cfg = cSnap.val() || { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 };
       const activeWeekId = cfg.semaine_active_id;
       const parMembreSemaine = {};
 
@@ -128,15 +128,15 @@
         parMembreSemaine[a.membre_id] = (parMembreSemaine[a.membre_id] || 0) + part;
       });
       entries(gSnap.val()).filter(([,g]) => g.semaine_id === activeWeekId && g.resultat !== 'Échec').forEach(([id, g]) => {
-        const part = (g.montant || 0) * (cfg.taux_cambriolage / 100);
+        const part = (g.count || 0) * cfg.taux_cambriolage;
         parMembreSemaine[g.membre_id] = (parMembreSemaine[g.membre_id] || 0) + part;
       });
       entries(vSnap.val()).filter(([,v]) => v.semaine_id === activeWeekId && v.resultat !== 'Échec').forEach(([id, v]) => {
-        const part = (v.montant || 0) * (cfg.taux_pochon / 100);
+        const part = (v.qty || 0) * cfg.taux_pochon;
         parMembreSemaine[v.membre_id] = (parMembreSemaine[v.membre_id] || 0) + part;
       });
       entries(lSnap.val()).filter(([,l]) => l.semaine_id === activeWeekId && l.resultat !== 'Échec').forEach(([id, l]) => {
-        const part = (l.montant || 0) * ((cfg.taux_branche || 0) / 100);
+        const part = (l.branche_qty || 0) * (cfg.taux_branche || 0);
         parMembreSemaine[l.membre_id] = (parMembreSemaine[l.membre_id] || 0) + part;
       });
 
