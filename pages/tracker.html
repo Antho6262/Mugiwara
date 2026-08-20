@@ -92,7 +92,7 @@
           <div class="field"><label>Eau utilisée</label><input type="number" id="l-eau" min="0" step="1" value="0"></div>
           <div class="field"><label>Graines de strawberry</label><input type="number" id="l-graines" min="0" step="1" value="0"></div>
           <div class="field"><label>Pots utilisés</label><input type="number" id="l-pots" min="0" step="1" value="0"></div>
-          <div class="field"><label>Nom de la branche récoltée</label><input type="text" id="l-branche" placeholder="Ex: Branche #12" required></div>
+          <div class="field"><label>Nombre de branches récoltées</label><input type="number" id="l-branche" min="1" step="1" value="1" required></div>
           <div class="field"><label>Note</label><input type="text" id="l-note" placeholder="optionnel"></div>
           <button class="submit" type="submit">Enregistrer la récolte</button>
         </form>
@@ -101,7 +101,7 @@
       <div class="card">
         <h3>Historique</h3>
         <table>
-          <thead><tr><th>Membre</th><th>Branche</th><th>Fertilisant</th><th>Eau</th><th>Graines</th><th>Pots</th><th>Gain</th><th></th></tr></thead>
+          <thead><tr><th>Membre</th><th>Branches</th><th>Fertilisant</th><th>Eau</th><th>Graines</th><th>Pots</th><th>Gain</th><th></th></tr></thead>
           <tbody id="l-table"></tbody>
         </table>
         <div class="totals" id="l-totals"></div>
@@ -286,13 +286,13 @@
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, l]) => {
           const m = membres[l.membre_id];
-          const gain = config.taux_branche || 0;
+          const gain = (l.branche_qty || 0) * (config.taux_branche || 0);
           totals[l.membre_id] = (totals[l.membre_id] || 0) + gain;
           grand += gain;
           const g = m ? gradeInfo(m.grade) : null;
           return `<tr>
             <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
-            <td>🌿 ${l.branche_nom || '—'}</td>
+            <td>🌿 ${l.branche_qty || 0}</td>
             <td>${l.fertilisant || 0}</td>
             <td>${l.eau || 0}</td>
             <td>${l.graines || 0}</td>
@@ -342,15 +342,16 @@
       const eau = parseInt(document.getElementById('l-eau').value, 10) || 0;
       const graines = parseInt(document.getElementById('l-graines').value, 10) || 0;
       const pots = parseInt(document.getElementById('l-pots').value, 10) || 0;
-      const branche_nom = document.getElementById('l-branche').value.trim();
+      const branche_qty = parseInt(document.getElementById('l-branche').value, 10);
       const note = document.getElementById('l-note').value.trim();
-      if (!membre_id || !branche_nom) return;
+      if (!membre_id || isNaN(branche_qty) || branche_qty < 1) return;
       db.ref('labos/' + uid()).set({
-        membre_id, fertilisant, eau, graines, pots, branche_nom, note,
+        membre_id, fertilisant, eau, graines, pots, branche_qty, note,
         date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId
       });
       deduireStockLabo({ fertilisant, eau, graines, pots });
       document.getElementById('form-labo').reset();
+      document.getElementById('l-branche').value = '1';
     });
 
     // ---- delete (délégué) ----

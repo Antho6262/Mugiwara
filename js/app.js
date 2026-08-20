@@ -203,7 +203,7 @@ async function computeSoldes() {
     parMembre[v.membre_id] = (parMembre[v.membre_id] || 0) + gain;
   });
   entries(lSnap.val()).forEach(([id, l]) => {
-    const gain = cfg.taux_branche || 0;
+    const gain = (l.branche_qty || 0) * (cfg.taux_branche || 0);
     solde_sale += gain;
     parMembre[l.membre_id] = (parMembre[l.membre_id] || 0) + gain;
   });
