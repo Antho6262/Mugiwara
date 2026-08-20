@@ -182,30 +182,34 @@ async function computeSoldes() {
     db.ref('blanchiments').get(),
     db.ref('payes').get(),
   ]);
-  const cfg = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 }, cSnap.val() || {});
+  const cfg = Object.assign({ taux_action_pct: 25, taux_cambriolage: 25, taux_pochon: 25, taux_branche: 25 }, cSnap.val() || {});
 
   let solde_sale = 0, solde_propre = 0;
-  const parMembre = {}; // gains bruts par membre (avant paye)
+  const parMembre = {}; // part due (commission) par membre, avant paye
 
   entries(aSnap.val()).filter(([id, a]) => a.resultat !== 'Échec').forEach(([id, a]) => {
-    const gain = (a.montant || 0) * (cfg.taux_action_pct / 100);
-    solde_sale += gain;
-    parMembre[a.membre_id] = (parMembre[a.membre_id] || 0) + gain;
+    const montant = a.montant || 0;
+    solde_sale += montant; // le montant total va au groupe
+    const part = montant * (cfg.taux_action_pct / 100);
+    parMembre[a.membre_id] = (parMembre[a.membre_id] || 0) + part;
   });
   entries(gSnap.val()).filter(([id, g]) => g.resultat !== 'Échec').forEach(([id, g]) => {
-    const gain = (g.count || 0) * cfg.taux_cambriolage;
-    solde_sale += gain;
-    parMembre[g.membre_id] = (parMembre[g.membre_id] || 0) + gain;
+    const montant = g.montant || 0;
+    solde_sale += montant;
+    const part = montant * (cfg.taux_cambriolage / 100);
+    parMembre[g.membre_id] = (parMembre[g.membre_id] || 0) + part;
   });
   entries(vSnap.val()).filter(([id, v]) => v.resultat !== 'Échec').forEach(([id, v]) => {
-    const gain = (v.qty || 0) * cfg.taux_pochon;
-    solde_sale += gain;
-    parMembre[v.membre_id] = (parMembre[v.membre_id] || 0) + gain;
+    const montant = v.montant || 0;
+    solde_sale += montant;
+    const part = montant * (cfg.taux_pochon / 100);
+    parMembre[v.membre_id] = (parMembre[v.membre_id] || 0) + part;
   });
   entries(lSnap.val()).filter(([id, l]) => l.resultat !== 'Échec').forEach(([id, l]) => {
-    const gain = (l.branche_qty || 0) * (cfg.taux_branche || 0);
-    solde_sale += gain;
-    parMembre[l.membre_id] = (parMembre[l.membre_id] || 0) + gain;
+    const montant = l.montant || 0;
+    solde_sale += montant;
+    const part = montant * ((cfg.taux_branche || 0) / 100);
+    parMembre[l.membre_id] = (parMembre[l.membre_id] || 0) + part;
   });
 
   entries(argSaleSnap.val()).forEach(([id, m]) => {
