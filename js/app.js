@@ -260,3 +260,53 @@ async function computeSoldes() {
 
   return { solde_sale, solde_propre, gainsParMembre: parMembre, payeParMembre, aPayerParMembre };
 }
+
+// ------------------------------------------------------------
+// Calcule les gains dus par membre pour UNE semaine précise
+// (ou pour toutes si semaineId est null/undefined).
+// Permet de payer une semaine passée même si elle est bloquée.
+// ------------------------------------------------------------
+async function computeGainsSemaine(semaineId) {
+  const [aSnap, gSnap, vSnap, lSnap, cSnap, payeSnap] = await Promise.all([
+    db.ref('actions').get(),
+    db.ref('cambriolages').get(),
+    db.ref('ventes').get(),
+    db.ref('labos').get(),
+    db.ref('config').get(),
+    db.ref('payes').get(),
+  ]);
+  const cfg = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 }, cSnap.val() || {});
+  const matchWeek = item => !semaineId || item.semaine_id === semaineId;
+
+  const parMembre = {};
+  entries(aSnap.val()).filter(([id, a]) => a.resultat !== 'Échec' && matchWeek(a)).forEach(([id, a]) => {
+    const part = (a.montant || 0) * (cfg.taux_action_pct / 100);
+    parMembre[a.membre_id] = (parMembre[a.membre_id] || 0) + part;
+  });
+  entries(gSnap.val()).filter(([id, g]) => g.resultat !== 'Échec' && matchWeek(g)).forEach(([id, g]) => {
+    const part = (g.count || 0) * cfg.taux_cambriolage;
+    parMembre[g.membre_id] = (parMembre[g.membre_id] || 0) + part;
+  });
+  entries(vSnap.val()).filter(([id, v]) => v.resultat !== 'Échec' && matchWeek(v)).forEach(([id, v]) => {
+    const part = (v.qty || 0) * cfg.taux_pochon;
+    parMembre[v.membre_id] = (parMembre[v.membre_id] || 0) + part;
+  });
+  entries(lSnap.val()).filter(([id, l]) => l.resultat !== 'Échec' && matchWeek(l)).forEach(([id, l]) => {
+    const part = (l.branche_qty || 0) * (cfg.taux_branche || 0);
+    parMembre[l.membre_id] = (parMembre[l.membre_id] || 0) + part;
+  });
+  // Fleeca / Armurerie : aucune part individuelle, non comptés dans la paye
+
+  const payes = entries(payeSnap.val()).filter(([id, p]) => matchWeek(p));
+  const payeParMembre = {};
+  payes.forEach(([id, p]) => {
+    payeParMembre[p.membre_id] = (payeParMembre[p.membre_id] || 0) + (p.montant || 0);
+  });
+
+  const aPayerParMembre = {};
+  Object.keys(parMembre).forEach(mid => {
+    aPayerParMembre[mid] = Math.max(0, (parMembre[mid] || 0) - (payeParMembre[mid] || 0));
+  });
+
+  return { gainsParMembre: parMembre, payeParMembre, aPayerParMembre };
+}

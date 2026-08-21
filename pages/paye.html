@@ -14,12 +14,19 @@
       <h2 id="pagehead-title">Paye</h2>
       <div class="rule"></div>
     </div>
-    <div class="note-hint" style="margin-bottom:16px;">Paye en argent sale uniquement — réservé aux grades Sergent et plus.</div>
+    <div class="note-hint" style="margin-bottom:16px;">Paye en argent sale uniquement — réservé aux grades Sergent et plus. Une semaine bloquée reste payable : choisis-la ci-dessous.</div>
+
+    <div class="card">
+      <div class="field" style="max-width:340px;">
+        <label>Semaine</label>
+        <select id="p-semaine"></select>
+      </div>
+    </div>
 
     <div class="card">
       <h3>À payer</h3>
       <table>
-        <thead><tr><th>Membre</th><th>Gains totaux</th><th>Déjà payé</th><th>Reste à payer</th><th></th></tr></thead>
+        <thead><tr><th>Membre</th><th>Gains (semaine)</th><th>Déjà payé (semaine)</th><th>Reste à payer</th><th></th></tr></thead>
         <tbody id="paye-body"></tbody>
       </table>
     </div>
@@ -27,7 +34,7 @@
     <div class="card">
       <h3>Historique des paiements</h3>
       <table>
-        <thead><tr><th>Membre</th><th>Montant</th><th>Par</th><th>Date</th></tr></thead>
+        <thead><tr><th>Membre</th><th>Semaine</th><th>Montant</th><th>Par</th><th>Date</th></tr></thead>
         <tbody id="hist-body"></tbody>
       </table>
     </div>
@@ -42,56 +49,97 @@
   const membre = initShell('paye', 'Paye');
   if (membre) {
     let membresMap = {};
+    let semainesMap = {};
+    let semaineSelectionnee = ''; // '' = toutes les semaines
+
+    function nomSemaine(id) {
+      if (!id) return 'Toutes les semaines';
+      const s = semainesMap[id];
+      return s ? s.nom : 'Semaine supprimée';
+    }
+
+    async function chargerSemaines() {
+      const [allSnap, activeSnap] = await Promise.all([
+        db.ref('semaines').get(),
+        db.ref('config/semaine_active_id').get()
+      ]);
+      const all = entries(allSnap.val()).sort((a, b) => (b[1].debut || '').localeCompare(a[1].debut || ''));
+      semainesMap = Object.fromEntries(all);
+      const activeId = activeSnap.val();
+
+      const sel = document.getElementById('p-semaine');
+      sel.innerHTML = '<option value="">— Toutes les semaines —</option>' +
+        all.map(([id, s]) => `<option value="${id}">${s.nom}${s.bloquee ? ' 🔒' : ' 🟢'}${id === activeId ? ' (active)' : ''}</option>`).join('');
+      sel.value = activeId || '';
+      semaineSelectionnee = sel.value;
+
+      sel.addEventListener('change', () => {
+        semaineSelectionnee = sel.value;
+        refresh();
+      });
+    }
 
     function refresh() {
-      Promise.all([db.ref('membres').get(), computeSoldes()]).then(([mSnap, soldes]) => {
+      Promise.all([db.ref('membres').get(), computeGainsSemaine(semaineSelectionnee || null)]).then(([mSnap, data]) => {
         membresMap = Object.fromEntries(entries(mSnap.val()));
-        const { gainsParMembre, payeParMembre, aPayerParMembre } = soldes;
+        const { gainsParMembre, payeParMembre, aPayerParMembre } = data;
 
         const rows = Object.entries(membresMap).filter(([id]) => (gainsParMembre[id] || 0) > 0).map(([id, m]) => {
           const g = gradeInfo(m.grade);
           const total = gainsParMembre[id] || 0;
           const deja = payeParMembre[id] || 0;
           const reste = aPayerParMembre[id] || 0;
+          const peutPayer = canManage(membre) && reste > 0 && semaineSelectionnee !== '';
           return `<tr>
             <td>${g.emoji} ${m.prenom}</td>
             <td>${fmtMoney(total)}</td>
             <td>${fmtMoney(deja)}</td>
             <td class="amt">${fmtMoney(reste)}</td>
-            <td>${canManage(membre) && reste > 0 ? `<button class="submit" data-id="${id}" data-montant="${reste}" style="padding:6px 14px;font-size:13px;">Payer</button>` : ''}</td>
+            <td>${peutPayer ? `<button class="submit" data-id="${id}" data-montant="${reste}" style="padding:6px 14px;font-size:13px;">Payer</button>` : ''}</td>
           </tr>`;
         }).join('');
-        document.getElementById('paye-body').innerHTML = rows || `<tr><td colspan="5" class="empty">Aucun gain enregistré pour le moment.</td></tr>`;
+        document.getElementById('paye-body').innerHTML = rows || `<tr><td colspan="5" class="empty">Aucun gain enregistré pour cette période.</td></tr>`;
+
+        if (semaineSelectionnee === '') {
+          document.getElementById('paye-body').insertAdjacentHTML('beforeend',
+            `<tr><td colspan="5" class="empty">Choisis une semaine précise pour pouvoir payer.</td></tr>`);
+        }
       });
     }
-    refresh();
 
     document.body.addEventListener('click', e => {
       if (e.target.matches('#paye-body button[data-id]')) {
         const membre_id = e.target.dataset.id;
         const montant = parseFloat(e.target.dataset.montant);
-        db.ref('payes/' + uid()).set({ membre_id, montant, par: membre.prenom, date: new Date().toISOString() })
-          .then(() => { toast('Paiement enregistré.'); refresh(); });
+        db.ref('payes/' + uid()).set({
+          membre_id, montant, par: membre.prenom, date: new Date().toISOString(), semaine_id: semaineSelectionnee
+        }).then(() => { toast('Paiement enregistré pour ' + nomSemaine(semaineSelectionnee) + '.'); refresh(); renderHistorique(); });
       }
     });
 
-    db.ref('payes').on('value', snap => {
-      const rows = entries(snap.val());
-      const tbody = document.getElementById('hist-body');
-      tbody.innerHTML = rows.length === 0
-        ? `<tr><td colspan="4" class="empty">Aucun paiement enregistré.</td></tr>`
-        : rows.slice().reverse().map(([id, p]) => {
-            const m = membresMap[p.membre_id];
-            const g = m ? gradeInfo(m.grade) : null;
-            const d = p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—';
-            return `<tr>
-              <td>${g ? g.emoji : '❓'} ${m ? m.prenom : '?'}</td>
-              <td class="amt">${fmtMoney(p.montant)}</td>
-              <td>${p.par || '—'}</td>
-              <td>${d}</td>
-            </tr>`;
-          }).join('');
-    });
+    function renderHistorique() {
+      db.ref('payes').get().then(snap => {
+        const rows = entries(snap.val());
+        const tbody = document.getElementById('hist-body');
+        tbody.innerHTML = rows.length === 0
+          ? `<tr><td colspan="5" class="empty">Aucun paiement enregistré.</td></tr>`
+          : rows.slice().reverse().map(([id, p]) => {
+              const m = membresMap[p.membre_id];
+              const g = m ? gradeInfo(m.grade) : null;
+              const d = p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—';
+              return `<tr>
+                <td>${g ? g.emoji : '❓'} ${m ? m.prenom : '?'}</td>
+                <td>${p.semaine_id ? nomSemaine(p.semaine_id) : '—'}</td>
+                <td class="amt">${fmtMoney(p.montant)}</td>
+                <td>${p.par || '—'}</td>
+                <td>${d}</td>
+              </tr>`;
+            }).join('');
+      });
+    }
+
+    chargerSemaines().then(() => { refresh(); renderHistorique(); });
+    db.ref('payes').on('value', () => renderHistorique());
   }
 </script>
 </body>
