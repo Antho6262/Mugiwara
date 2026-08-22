@@ -175,7 +175,7 @@ async function ensureActiveWeek() {
 
 // Calcule le solde d'argent sale / propre depuis toutes les sources Firebase
 async function computeSoldes() {
-  const [aSnap, gSnap, vSnap, lSnap, flSnap, arSnap, txSnap, cSnap, argSaleSnap, argPropreSnap, blanchSnap, payeSnap] = await Promise.all([
+  const [aSnap, gSnap, vSnap, lSnap, flSnap, arSnap, txSnap, taxSnap, cSnap, argSaleSnap, argPropreSnap, blanchSnap, payeSnap] = await Promise.all([
     db.ref('actions').get(),
     db.ref('cambriolages').get(),
     db.ref('ventes').get(),
@@ -183,6 +183,7 @@ async function computeSoldes() {
     db.ref('fleecas').get(),
     db.ref('armureries').get(),
     db.ref('transactions').get(),
+    db.ref('taxes').get(),
     db.ref('config').get(),
     db.ref('argent_sale').get(),
     db.ref('argent_propre').get(),
@@ -231,6 +232,12 @@ async function computeSoldes() {
     const montant = (t.prix || 0) * (t.type === 'achat' ? -1 : 1);
     if (t.type_argent === 'propre') solde_propre += montant;
     else solde_sale += montant;
+  });
+
+  // Taxes perçues : toujours une entrée d'argent pour le groupe
+  entries(taxSnap.val()).forEach(([id, t]) => {
+    if (t.type_argent === 'propre') solde_propre += (t.montant || 0);
+    else solde_sale += (t.montant || 0);
   });
 
   entries(argSaleSnap.val()).forEach(([id, m]) => {
