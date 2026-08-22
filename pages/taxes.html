@@ -62,6 +62,7 @@
     db.ref('membres').on('value', s => {
       membresMap = Object.fromEntries(entries(s.val()));
       document.getElementById('tx-membre').innerHTML = Object.entries(membresMap)
+        .filter(([id, m]) => !m.invisible || id === membre.id)
         .map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`).join('')
         || '<option value="">Aucun membre</option>';
     });

@@ -101,7 +101,7 @@
 
       const rows = Object.entries(partParMembre)
         .map(([id, total]) => ({ id, total, m: membres[id] }))
-        .filter(r => r.m)
+        .filter(r => r.m && !r.m.invisible)
         .sort((a, b) => b.total - a.total);
 
       document.getElementById('ranking-body').innerHTML = rows.length === 0
@@ -149,7 +149,7 @@
 
       const top3 = Object.entries(parMembreSemaine)
         .map(([id, total]) => ({ id, total, m: membres[id] }))
-        .filter(r => r.m)
+        .filter(r => r.m && !r.m.invisible)
         .sort((a, b) => b.total - a.total)
         .slice(0, 3);
 

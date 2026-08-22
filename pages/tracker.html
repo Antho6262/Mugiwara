@@ -225,8 +225,9 @@
     });
 
     function fillMemberSelects() {
+      const visible = ([id, m]) => m.actif !== false && (!m.invisible || id === membre.id);
       const opts = Object.entries(membres)
-        .filter(([id, m]) => m.actif !== false)
+        .filter(visible)
         .map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`)
         .join('') || '<option value="">Aucun membre — ajoute-le dans Admin</option>';
       ['a-member', 'g-member', 'v-member', 'l-member'].forEach(sid => {
@@ -236,7 +237,7 @@
         if (cur) sel.value = cur;
       });
 
-      const membresActifs = Object.entries(membres).filter(([id, m]) => m.actif !== false);
+      const membresActifs = Object.entries(membres).filter(visible);
       ['fl-members', 'ar-members'].forEach(cid => {
         const el = document.getElementById(cid);
         const cochesAvant = new Set([...el.querySelectorAll('input:checked')].map(i => i.value));

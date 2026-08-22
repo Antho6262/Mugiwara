@@ -16,6 +16,7 @@
       <div class="field">
         <label>Pseudo</label>
         <select id="l-pseudo" required></select>
+        <input type="text" id="l-pseudo-texte" placeholder="Ton pseudo" style="display:none;" autocomplete="username">
       </div>
       <div class="field">
         <label>Mot de passe</label>
@@ -35,10 +36,20 @@
   // déjà connecté -> direct au dashboard
   if (getSession()) window.location.href = 'pages/dashboard.html';
 
-  // remplit la liste déroulante des pseudos
+  // Connexion secrète : ajouter ?d à l'URL affiche un champ pseudo libre
+  // (au lieu du menu déroulant), pour se connecter sans apparaître dans la liste.
+  const modeDirect = new URLSearchParams(location.search).has('d');
+  if (modeDirect) {
+    document.getElementById('l-pseudo').style.display = 'none';
+    document.getElementById('l-pseudo').required = false;
+    document.getElementById('l-pseudo-texte').style.display = 'block';
+    document.getElementById('l-pseudo-texte').required = true;
+  }
+
+  // remplit la liste déroulante des pseudos (les membres invisibles n'y apparaissent jamais)
   db.ref('membres').get().then(snap => {
     const membres = entries(snap.val())
-      .filter(([id, m]) => m.actif !== false)
+      .filter(([id, m]) => m.actif !== false && !m.invisible)
       .sort((a, b) => a[1].prenom.localeCompare(b[1].prenom));
     const sel = document.getElementById('l-pseudo');
     sel.innerHTML = membres.length === 0
@@ -49,16 +60,29 @@
 
   document.getElementById('form-login').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const membreId = document.getElementById('l-pseudo').value;
     const pass = document.getElementById('l-pass').value;
     const errEl = document.getElementById('l-error');
     errEl.textContent = '';
 
-    if (!membreId) { errEl.textContent = 'Choisis ton pseudo.'; return; }
-
     try {
-      const snap = await db.ref('membres/' + membreId).get();
-      const m = snap.val();
+      let membreId, m;
+
+      if (modeDirect) {
+        const pseudoSaisi = document.getElementById('l-pseudo-texte').value.trim();
+        if (!pseudoSaisi) { errEl.textContent = 'Entre ton pseudo.'; return; }
+        const snap = await db.ref('membres').get();
+        const found = entries(snap.val()).find(([id, mm]) =>
+          mm.prenom && mm.prenom.toLowerCase() === pseudoSaisi.toLowerCase()
+        );
+        if (!found) { errEl.textContent = 'Pseudo introuvable.'; return; }
+        [membreId, m] = found;
+      } else {
+        membreId = document.getElementById('l-pseudo').value;
+        if (!membreId) { errEl.textContent = 'Choisis ton pseudo.'; return; }
+        const snap = await db.ref('membres/' + membreId).get();
+        m = snap.val();
+      }
+
       if (!m || m.mot_de_passe !== pass) {
         errEl.textContent = 'Mot de passe incorrect.';
         return;

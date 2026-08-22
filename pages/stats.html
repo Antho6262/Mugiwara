@@ -106,7 +106,7 @@
       const parGofast = {}; gofasts.forEach(([,g]) => parGofast[g.membre_id] = (parGofast[g.membre_id]||0) + (g.count||0));
 
       const topList = (obj, unit) => Object.entries(obj)
-        .filter(([id]) => membres[id])
+        .filter(([id]) => membres[id] && !membres[id].invisible)
         .sort((a,b) => b[1]-a[1]).slice(0,8)
         .map(([id, n]) => `<tr><td>${gradeInfo(membres[id].grade).emoji} ${membres[id].prenom}</td><td class="amt">${n} ${unit}</td></tr>`).join('')
         || `<tr><td colspan="2" class="empty">Rien pour le moment.</td></tr>`;
@@ -146,7 +146,7 @@
         </div></td>`;
       };
 
-      const rows = Object.entries(membres).filter(([,m]) => m.actif !== false).map(([id, m]) => {
+      const rows = Object.entries(membres).filter(([,m]) => m.actif !== false && !m.invisible).map(([id, m]) => {
         const g = gradeInfo(m.grade);
         return `<tr>
           <td>${g.emoji} ${m.prenom}</td>

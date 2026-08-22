@@ -252,6 +252,9 @@
             <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);" title="Donne l'accès total au site (page Admin, toutes les permissions ignorées)">
               <input type="checkbox" class="admin-toggle" data-id="${id}" ${m.role === 'admin' ? 'checked' : ''}> Admin
             </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);" title="Masque ce membre des classements, du Top 3 et des stats (il reste actif et peut se connecter normalement)">
+              <input type="checkbox" class="invisible-toggle" data-id="${id}" ${m.invisible ? 'checked' : ''}> Invisible
+            </label>
             <button class="del" data-id="${id}" data-type="membres" title="Supprime définitivement ce membre">✕</button>
           </span>
         </div>`;
@@ -262,6 +265,9 @@
       });
       el.querySelectorAll('.admin-toggle').forEach(chk => {
         chk.addEventListener('change', () => db.ref('membres/' + chk.dataset.id).update({ role: chk.checked ? 'admin' : 'membre' }));
+      });
+      el.querySelectorAll('.invisible-toggle').forEach(chk => {
+        chk.addEventListener('change', () => db.ref('membres/' + chk.dataset.id).update({ invisible: chk.checked }));
       });
     });
 
