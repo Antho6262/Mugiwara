@@ -65,6 +65,12 @@ function fmtMoney(n) {
   return '$' + Number(n || 0).toLocaleString('fr-FR');
 }
 
+function fmtDateHeure(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('fr-FR') + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }

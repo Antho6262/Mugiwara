@@ -51,7 +51,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membre</th><th>Type</th><th>Montant total</th><th>Résultat</th><th>Part membre</th><th>Note</th><th></th></tr></thead><tbody id="a-table"></tbody></table>
+        <table><thead><tr><th>Membre</th><th>Type</th><th>Montant total</th><th>Résultat</th><th>Part membre</th><th>Note</th><th>Date</th><th></th></tr></thead><tbody id="a-table"></tbody></table>
         <div class="totals" id="a-totals"></div>
         <div class="grand" id="a-grand"></div>
       </div>
@@ -76,7 +76,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membre</th><th>Cambriolages</th><th>Montant total</th><th>Résultat</th><th>Part membre</th><th>Note</th><th></th></tr></thead><tbody id="g-table"></tbody></table>
+        <table><thead><tr><th>Membre</th><th>Cambriolages</th><th>Montant total</th><th>Résultat</th><th>Part membre</th><th>Note</th><th>Date</th><th></th></tr></thead><tbody id="g-table"></tbody></table>
         <div class="totals" id="g-totals"></div>
         <div class="grand" id="g-grand"></div>
       </div>
@@ -102,7 +102,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membre</th><th>Produit</th><th>Pochons</th><th>Montant total</th><th>Résultat</th><th>Part membre</th><th>Note</th><th></th></tr></thead><tbody id="v-table"></tbody></table>
+        <table><thead><tr><th>Membre</th><th>Produit</th><th>Pochons</th><th>Montant total</th><th>Résultat</th><th>Part membre</th><th>Note</th><th>Date</th><th></th></tr></thead><tbody id="v-table"></tbody></table>
         <div class="totals" id="v-totals"></div>
         <div class="grand" id="v-grand"></div>
       </div>
@@ -132,7 +132,7 @@
       <div class="card">
         <h3>Historique</h3>
         <table>
-          <thead><tr><th>Membre</th><th>Branches</th><th>Fertilisant</th><th>Eau</th><th>Graines</th><th>Pots</th><th>Montant total</th><th>Résultat</th><th>Part membre</th><th></th></tr></thead>
+          <thead><tr><th>Membre</th><th>Branches</th><th>Fertilisant</th><th>Eau</th><th>Graines</th><th>Pots</th><th>Montant total</th><th>Résultat</th><th>Part membre</th><th>Date</th><th></th></tr></thead>
           <tbody id="l-table"></tbody>
         </table>
         <div class="totals" id="l-totals"></div>
@@ -162,7 +162,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membres</th><th>Montant</th><th>Résultat</th><th>Note</th><th></th></tr></thead><tbody id="fl-table"></tbody></table>
+        <table><thead><tr><th>Membres</th><th>Montant</th><th>Résultat</th><th>Note</th><th>Date</th><th></th></tr></thead><tbody id="fl-table"></tbody></table>
         <div class="grand" id="fl-grand"></div>
       </div>
     </div>
@@ -190,7 +190,7 @@
       </div>
       <div class="card">
         <h3>Historique</h3>
-        <table><thead><tr><th>Membres</th><th>Montant</th><th>Résultat</th><th>Note</th><th></th></tr></thead><tbody id="ar-table"></tbody></table>
+        <table><thead><tr><th>Membres</th><th>Montant</th><th>Résultat</th><th>Note</th><th>Date</th><th></th></tr></thead><tbody id="ar-table"></tbody></table>
         <div class="grand" id="ar-grand"></div>
       </div>
     </div>
@@ -271,7 +271,7 @@
       const tbody = document.getElementById('a-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty">Aucune action enregistrée.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty">Aucune action enregistrée.</td></tr>`;
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, a]) => {
           const m = membres[a.membre_id];
@@ -287,6 +287,7 @@
             <td>${reussite ? '✅ Réussite' : `❌ Échec${a.raison ? ' — ' + a.raison : ''}`}</td>
             <td class="amt">${fmtMoney(part)}</td>
             <td>${a.note || '—'}</td>
+            <td>${fmtDateHeure(a.date)}</td>
             <td><button class="del" data-id="${id}" data-type="actions">✕</button></td>
           </tr>`;
         }).join('');
@@ -318,7 +319,7 @@
       const tbody = document.getElementById('g-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty">Aucun cambriolage enregistré.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty">Aucun cambriolage enregistré.</td></tr>`;
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, gf]) => {
           const m = membres[gf.membre_id];
@@ -334,6 +335,7 @@
             <td>${reussite ? '✅ Réussite' : `❌ Échec${gf.raison ? ' — ' + gf.raison : ''}`}</td>
             <td class="amt">${fmtMoney(part)}</td>
             <td>${gf.note || '—'}</td>
+            <td>${fmtDateHeure(gf.date)}</td>
             <td><button class="del" data-id="${id}" data-type="cambriolages">✕</button></td>
           </tr>`;
         }).join('');
@@ -387,7 +389,7 @@
       const tbody = document.getElementById('v-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty">Aucune vente enregistrée.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="empty">Aucune vente enregistrée.</td></tr>`;
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, v]) => {
           const m = membres[v.membre_id];
@@ -404,6 +406,7 @@
             <td>${reussite ? '✅ Réussite' : `❌ Échec${v.raison ? ' — ' + v.raison : ''}`}</td>
             <td class="amt">${fmtMoney(part)}</td>
             <td>${v.note || '—'}</td>
+            <td>${fmtDateHeure(v.date)}</td>
             <td><button class="del" data-id="${id}" data-type="ventes">✕</button></td>
           </tr>`;
         }).join('');
@@ -459,7 +462,7 @@
       const tbody = document.getElementById('l-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="empty">Aucune récolte enregistrée.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="empty">Aucune récolte enregistrée.</td></tr>`;
       } else {
         tbody.innerHTML = rows.slice().reverse().map(([id, l]) => {
           const m = membres[l.membre_id];
@@ -478,6 +481,7 @@
             <td>${fmtMoney(l.montant)}</td>
             <td>${reussite ? '✅ Réussite' : `❌ Échec${l.raison ? ' — ' + l.raison : ''}`}</td>
             <td class="amt">${fmtMoney(part)}</td>
+            <td>${fmtDateHeure(l.date)}</td>
             <td><button class="del" data-id="${id}" data-type="labos">✕</button></td>
           </tr>`;
         }).join('');
@@ -547,7 +551,7 @@
         const tbody = document.getElementById(prefix + '-table');
         let grand = 0;
         if (rows.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5" class="empty">Aucun braquage ${label} enregistré.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="empty">Aucun braquage ${label} enregistré.</td></tr>`;
         } else {
           tbody.innerHTML = rows.slice().reverse().map(([id, r]) => {
             const reussite = r.resultat !== 'Échec';
@@ -561,6 +565,7 @@
               <td class="amt">${fmtMoney(r.montant)}</td>
               <td>${reussite ? '✅ Réussite' : `❌ Échec${r.raison ? ' — ' + r.raison : ''}`}</td>
               <td>${r.note || '—'}</td>
+              <td>${fmtDateHeure(r.date)}</td>
               <td><button class="del" data-id="${id}" data-type="${nodeName}">✕</button></td>
             </tr>`;
           }).join('');
