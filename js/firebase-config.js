@@ -62,7 +62,7 @@ function entries(obj) {
 }
 
 function fmtMoney(n) {
-  return '$' + Number(n || 0).toLocaleString('fr-FR');
+  return '$' + Math.round(Number(n) || 0).toLocaleString('fr-FR');
 }
 
 function fmtDateHeure(iso) {
