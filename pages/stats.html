@@ -46,8 +46,7 @@
         <table style="font-size:13px;">
           <thead><tr>
             <th>Membre</th>
-            <th>🏴‍☠️ Actions</th>
-            <th>🏠 Cambriolage</th>
+            <th>🏴‍☠️ Actions (+ 🏠 Cambriolage)</th>
             <th>💊 Vente</th>
             <th>🧪 Labo</th>
             <th>🏦 Fleeca</th>
@@ -118,12 +117,12 @@
       const quotas = cfg.quotas || {};
       const activeWeekId = cfg.semaine_active_id;
 
-      const compteCat = { actions: {}, cambriolage: {}, vente: {}, labo: {}, fleeca: {}, armurerie: {} };
+      const compteCat = { actions: {}, vente: {}, labo: {}, fleeca: {}, armurerie: {} };
       const add = (list, cat, key) => list.forEach(([, item]) => {
         if (item.semaine_id === activeWeekId) compteCat[cat][item[key]] = (compteCat[cat][item[key]] || 0) + 1;
       });
       add(actions, 'actions', 'membre_id');
-      add(gofasts, 'cambriolage', 'membre_id');
+      add(gofasts, 'actions', 'membre_id'); // cambriolage compte comme 1 action pour le quota (paye inchangée)
       add(ventes, 'vente', 'membre_id');
       add(labos, 'labo', 'membre_id');
       fleecas.forEach(([, r]) => {
@@ -151,14 +150,13 @@
         return `<tr>
           <td>${g.emoji} ${m.prenom}</td>
           ${cell('actions', id)}
-          ${cell('cambriolage', id)}
           ${cell('vente', id)}
           ${cell('labo', id)}
           ${cell('fleeca', id)}
           ${cell('armurerie', id)}
         </tr>`;
       }).join('');
-      document.getElementById('quota-body').innerHTML = rows || `<tr><td colspan="7" class="empty">Aucun membre.</td></tr>`;
+      document.getElementById('quota-body').innerHTML = rows || `<tr><td colspan="6" class="empty">Aucun membre.</td></tr>`;
     });
   }
 </script>
