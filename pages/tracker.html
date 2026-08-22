@@ -207,6 +207,8 @@
     let membres = {};
     let config = { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 };
     let activeWeekId = null;
+    let lastActionsSnap = null, lastGofastSnap = null, lastVentesSnap = null, lastLabosSnap = null;
+    const braquageRenders = {};
     db.ref('config/semaine_active_id').on('value', s => { activeWeekId = s.val(); });
 
     document.querySelectorAll('.tabs button').forEach(btn => {
@@ -267,8 +269,9 @@
     }
 
     // ---- ACTIONS ----
-    db.ref('actions').on('value', snap => {
-      const rows = entries(snap.val());
+    function renderActions() {
+      if (!lastActionsSnap) return;
+      const rows = entries(lastActionsSnap.val());
       const tbody = document.getElementById('a-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -295,7 +298,8 @@
       }
       renderTotalsChips('a-totals', totals);
       document.getElementById('a-grand').textContent = 'Total réel gagné (groupe) : ' + fmtMoney(grand);
-    });
+    }
+    db.ref('actions').on('value', snap => { lastActionsSnap = snap; renderActions(); });
 
     document.getElementById('form-actions').addEventListener('submit', e => {
       e.preventDefault();
@@ -315,8 +319,9 @@
     });
 
     // ---- CAMBRIOLAGE ----
-    db.ref('cambriolages').on('value', snap => {
-      const rows = entries(snap.val());
+    function renderGofast() {
+      if (!lastGofastSnap) return;
+      const rows = entries(lastGofastSnap.val());
       const tbody = document.getElementById('g-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -343,7 +348,8 @@
       }
       renderTotalsChips('g-totals', totals);
       document.getElementById('g-grand').textContent = 'Total réel gagné (groupe) : ' + fmtMoney(grand);
-    });
+    }
+    db.ref('cambriolages').on('value', snap => { lastGofastSnap = snap; renderGofast(); });
 
     document.getElementById('form-gofast').addEventListener('submit', e => {
       e.preventDefault();
@@ -385,8 +391,9 @@
     }
 
     // ---- VENTE ----
-    db.ref('ventes').on('value', snap => {
-      const rows = entries(snap.val());
+    function renderVente() {
+      if (!lastVentesSnap) return;
+      const rows = entries(lastVentesSnap.val());
       const tbody = document.getElementById('v-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -414,7 +421,8 @@
       }
       renderTotalsChips('v-totals', totals);
       document.getElementById('v-grand').textContent = 'Total réel gagné (groupe) : ' + fmtMoney(grand);
-    });
+    }
+    db.ref('ventes').on('value', snap => { lastVentesSnap = snap; renderVente(); });
 
     document.getElementById('form-vente').addEventListener('submit', e => {
       e.preventDefault();
@@ -458,8 +466,9 @@
     });
 
     // ---- LABO ----
-    db.ref('labos').on('value', snap => {
-      const rows = entries(snap.val());
+    function renderLabo() {
+      if (!lastLabosSnap) return;
+      const rows = entries(lastLabosSnap.val());
       const tbody = document.getElementById('l-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -489,7 +498,8 @@
       }
       renderTotalsChips('l-totals', totals);
       document.getElementById('l-grand').textContent = 'Total réel gagné (groupe) : ' + fmtMoney(grand);
-    });
+    }
+    db.ref('labos').on('value', snap => { lastLabosSnap = snap; renderLabo(); });
 
     // Retire au mieux les quantités saisies du stock (catégorie "Labo"), sans jamais bloquer l'enregistrement
     async function deduireStockLabo({ fertilisant, eau, graines, pots }) {
@@ -547,8 +557,10 @@
 
     // ---- FLEECA / ARMURERIE (braquages collectifs, aucune part individuelle) ----
     function setupBraquage(prefix, nodeName, label) {
-      db.ref(nodeName).on('value', snap => {
-        const rows = entries(snap.val());
+      let lastSnap = null;
+      function render() {
+        if (!lastSnap) return;
+        const rows = entries(lastSnap.val());
         const tbody = document.getElementById(prefix + '-table');
         let grand = 0;
         if (rows.length === 0) {
@@ -572,7 +584,9 @@
           }).join('');
         }
         document.getElementById(prefix + '-grand').textContent = 'Total réel gagné (groupe) : ' + fmtMoney(grand);
-      });
+      }
+      braquageRenders[prefix] = render;
+      db.ref(nodeName).on('value', snap => { lastSnap = snap; render(); });
 
       document.getElementById('form-' + (prefix === 'fl' ? 'fleeca' : 'armurerie')).addEventListener('submit', e => {
         e.preventDefault();
@@ -609,6 +623,11 @@
     db.ref('membres').on('value', snap => {
       membres = Object.fromEntries(entries(snap.val()));
       fillMemberSelects();
+      renderActions();
+      renderGofast();
+      renderVente();
+      renderLabo();
+      Object.values(braquageRenders).forEach(fn => fn());
     });
     db.ref('config').on('value', snap => {
       config = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 }, snap.val() || {});
