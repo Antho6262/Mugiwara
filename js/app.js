@@ -234,10 +234,10 @@ async function computeSoldes() {
     else solde_sale += montant;
   });
 
-  // Taxes perçues : toujours une entrée d'argent pour le groupe
+  // Taxes : dépense du groupe (ce qu'on paye), pas une recette
   entries(taxSnap.val()).forEach(([id, t]) => {
-    if (t.type_argent === 'propre') solde_propre += (t.montant || 0);
-    else solde_sale += (t.montant || 0);
+    if (t.type_argent === 'propre') solde_propre -= (t.montant || 0);
+    else solde_sale -= (t.montant || 0);
   });
 
   entries(argSaleSnap.val()).forEach(([id, m]) => {
