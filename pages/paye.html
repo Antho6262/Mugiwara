@@ -95,7 +95,7 @@
             <td>${fmtMoney(total)}</td>
             <td>${fmtMoney(deja)}</td>
             <td class="amt">${fmtMoney(reste)}</td>
-            <td>${peutPayer ? `<button class="submit" data-id="${id}" data-montant="${reste}" style="padding:6px 14px;font-size:13px;">Payer</button>` : ''}</td>
+            <td>${peutPayer ? `<button class="submit" data-id="${id}" data-montant="${reste}" data-nom="${m.prenom}" style="padding:6px 14px;font-size:13px;">Payer</button>` : ''}</td>
           </tr>`;
         }).join('');
         document.getElementById('paye-body').innerHTML = rows || `<tr><td colspan="5" class="empty">Aucun gain enregistré pour cette période.</td></tr>`;
@@ -111,6 +111,9 @@
       if (e.target.matches('#paye-body button[data-id]')) {
         const membre_id = e.target.dataset.id;
         const montant = parseFloat(e.target.dataset.montant);
+        const nom = e.target.dataset.nom;
+        const ok = confirm(`Confirmer le paiement de ${fmtMoney(montant)} à ${nom} pour ${nomSemaine(semaineSelectionnee)} ?`);
+        if (!ok) return;
         db.ref('payes/' + uid()).set({
           membre_id, montant, par: membre.prenom, date: new Date().toISOString(), semaine_id: semaineSelectionnee
         }).then(() => { toast('Paiement enregistré pour ' + nomSemaine(semaineSelectionnee) + '.'); refresh(); renderHistorique(); });
