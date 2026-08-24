@@ -23,7 +23,7 @@
       </div>
     </div>
 
-    <div class="grid cols-3" id="soldes" style="margin-bottom:16px;"></div>
+    <div class="grid cols-3" id="soldes" style="margin-bottom:16px;grid-template-columns:repeat(2,1fr);max-width:600px;"></div>
     <div class="grid cols-3" id="cat-cards" style="margin-bottom:16px;"></div>
 
     <div class="card">
@@ -172,7 +172,6 @@
       document.getElementById('soldes').innerHTML = `
         <div class="stat"><div class="v">${fmtMoney(solde_sale)}</div><div class="l">🕶️ Argent sale</div></div>
         <div class="stat"><div class="v">${fmtMoney(solde_propre)}</div><div class="l">💵 Argent propre</div></div>
-        <div class="stat"><div class="v">${fmtMoney(solde_sale + solde_propre)}</div><div class="l">🧭 Trésor total</div></div>
       `;
     });
   }
