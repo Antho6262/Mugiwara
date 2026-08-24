@@ -16,6 +16,13 @@
     </div>
     <div class="note-hint" style="margin-bottom:16px;">💰 Le montant saisi est le total réel ramené au groupe. La part payée au membre (%) est calculée dessus, et réglée séparément dans Paye.</div>
 
+    <div class="card" style="margin-bottom:20px;">
+      <div class="field" style="max-width:340px;">
+        <label>Semaine affichée</label>
+        <select id="t-semaine"></select>
+      </div>
+    </div>
+
     <div class="tabs">
       <button data-tab="actions" class="active">🏴‍☠️ Action</button>
       <button data-tab="gofast">🏠 Cambriolage</button>
@@ -207,9 +214,32 @@
     let membres = {};
     let config = { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 };
     let activeWeekId = null;
+    let semaineFiltre = ''; // '' = toutes les semaines (avant sélection)
     let lastActionsSnap = null, lastGofastSnap = null, lastVentesSnap = null, lastLabosSnap = null;
     const braquageRenders = {};
-    db.ref('config/semaine_active_id').on('value', s => { activeWeekId = s.val(); });
+    db.ref('config/semaine_active_id').on('value', s => {
+      activeWeekId = s.val();
+      if (!document.getElementById('t-semaine').dataset.init) chargerSemaines();
+    });
+
+    async function chargerSemaines() {
+      document.getElementById('t-semaine').dataset.init = '1';
+      const allSnap = await db.ref('semaines').get();
+      const all = entries(allSnap.val()).sort((a, b) => (b[1].debut || '').localeCompare(a[1].debut || ''));
+      const sel = document.getElementById('t-semaine');
+      sel.innerHTML =
+        all.map(([id, s]) => `<option value="${id}">${s.nom}${s.bloquee ? ' 🔒' : ' 🟢'}${id === activeWeekId ? ' (active)' : ''}</option>`).join('') +
+        '<option value="">— Toutes les semaines —</option>';
+      sel.value = activeWeekId || '';
+      semaineFiltre = sel.value;
+      renderActions(); renderGofast(); renderVente(); renderLabo();
+      Object.values(braquageRenders).forEach(fn => fn());
+      sel.addEventListener('change', () => {
+        semaineFiltre = sel.value;
+        renderActions(); renderGofast(); renderVente(); renderLabo();
+        Object.values(braquageRenders).forEach(fn => fn());
+      });
+    }
 
     document.querySelectorAll('.tabs button').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -271,7 +301,7 @@
     // ---- ACTIONS ----
     function renderActions() {
       if (!lastActionsSnap) return;
-      const rows = entries(lastActionsSnap.val());
+      const rows = entries(lastActionsSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
       const tbody = document.getElementById('a-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -321,7 +351,7 @@
     // ---- CAMBRIOLAGE ----
     function renderGofast() {
       if (!lastGofastSnap) return;
-      const rows = entries(lastGofastSnap.val());
+      const rows = entries(lastGofastSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
       const tbody = document.getElementById('g-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -393,7 +423,7 @@
     // ---- VENTE ----
     function renderVente() {
       if (!lastVentesSnap) return;
-      const rows = entries(lastVentesSnap.val());
+      const rows = entries(lastVentesSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
       const tbody = document.getElementById('v-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -468,7 +498,7 @@
     // ---- LABO ----
     function renderLabo() {
       if (!lastLabosSnap) return;
-      const rows = entries(lastLabosSnap.val());
+      const rows = entries(lastLabosSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
       const tbody = document.getElementById('l-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -560,7 +590,7 @@
       let lastSnap = null;
       function render() {
         if (!lastSnap) return;
-        const rows = entries(lastSnap.val());
+        const rows = entries(lastSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
         const tbody = document.getElementById(prefix + '-table');
         let grand = 0;
         if (rows.length === 0) {
