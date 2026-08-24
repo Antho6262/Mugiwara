@@ -22,6 +22,13 @@
       <div class="rule"></div>
     </div>
 
+    <div class="card">
+      <div class="field" style="max-width:340px;">
+        <label>Semaine affichée</label>
+        <select id="q-semaine"></select>
+      </div>
+    </div>
+
     <div class="tabs">
       <button data-tab="stats" class="active">🧭 Stats</button>
       <button data-tab="quotas">📋 Quotas</button>
@@ -41,12 +48,6 @@
 
     <div class="tabpanel" id="panel-quotas">
       <div class="note-hint" style="margin-bottom:16px;">Les objectifs par catégorie se configurent dans Admin → Quotas. Remis à zéro à chaque nouvelle semaine.</div>
-      <div class="card">
-        <div class="field" style="max-width:340px;">
-          <label>Semaine affichée</label>
-          <select id="q-semaine"></select>
-        </div>
-      </div>
       <div class="card">
         <h3>Progression de la semaine</h3>
         <table style="font-size:13px;">
@@ -99,8 +100,39 @@
       semaineFiltre = sel.value;
       sel.addEventListener('change', () => {
         semaineFiltre = sel.value;
+        renderStats();
         renderQuotas();
       });
+    }
+
+    function renderStats() {
+      if (!dernieresListes) return;
+      const { membres, actions, gofasts, ventes, fleecas, armureries } = dernieresListes;
+      const matchWeek = item => !semaineFiltre || item.semaine_id === semaineFiltre;
+      const actionsF = actions.filter(([,a]) => matchWeek(a));
+      const gofastsF = gofasts.filter(([,g]) => matchWeek(g));
+      const ventesF = ventes.filter(([,v]) => matchWeek(v));
+      const fleecasF = fleecas.filter(([,r]) => matchWeek(r));
+      const armureriesF = armureries.filter(([,r]) => matchWeek(r));
+
+      document.getElementById('stat-cards').innerHTML = `
+        <div class="stat"><div class="v">${actionsF.length}</div><div class="l">🏴‍☠️ Actions totales</div></div>
+        <div class="stat"><div class="v">${gofastsF.reduce((s,[,g])=>s+(g.count||0),0)}</div><div class="l">🏠 Cambriolages totaux</div></div>
+        <div class="stat"><div class="v">${ventesF.reduce((s,[,v])=>s+(v.qty||0),0)}</div><div class="l">💊 Pochons vendus</div></div>
+        <div class="stat"><div class="v">${fleecasF.length + armureriesF.length}</div><div class="l">🏦 Braquages Fleeca/Armurerie</div></div>
+      `;
+
+      const parVente = {}; ventesF.forEach(([,v]) => parVente[v.membre_id] = (parVente[v.membre_id]||0) + (v.qty||0));
+      const parGofast = {}; gofastsF.forEach(([,g]) => parGofast[g.membre_id] = (parGofast[g.membre_id]||0) + (g.count||0));
+
+      const topList = (obj, unit) => Object.entries(obj)
+        .filter(([id]) => membres[id] && !membres[id].invisible)
+        .sort((a,b) => b[1]-a[1]).slice(0,8)
+        .map(([id, n]) => `<tr><td>${gradeInfo(membres[id].grade).emoji} ${membres[id].prenom}</td><td class="amt">${n} ${unit}</td></tr>`).join('')
+        || `<tr><td colspan="2" class="empty">Rien pour le moment.</td></tr>`;
+
+      document.getElementById('top-vente').innerHTML = topList(parVente, '💊');
+      document.getElementById('top-gofast').innerHTML = topList(parGofast, '🏠');
     }
 
     function renderQuotas() {
@@ -172,27 +204,8 @@
       const fleecas = entries(flSnap.val()).filter(([,r]) => r.resultat !== 'Échec');
       const armureries = entries(arSnap.val()).filter(([,r]) => r.resultat !== 'Échec');
 
-      document.getElementById('stat-cards').innerHTML = `
-        <div class="stat"><div class="v">${actions.length}</div><div class="l">🏴‍☠️ Actions totales</div></div>
-        <div class="stat"><div class="v">${gofasts.reduce((s,[,g])=>s+(g.count||0),0)}</div><div class="l">🏠 Cambriolages totaux</div></div>
-        <div class="stat"><div class="v">${ventes.reduce((s,[,v])=>s+(v.qty||0),0)}</div><div class="l">💊 Pochons vendus</div></div>
-        <div class="stat"><div class="v">${fleecas.length + armureries.length}</div><div class="l">🏦 Braquages Fleeca/Armurerie</div></div>
-      `;
-
-      const parVente = {}; ventes.forEach(([,v]) => parVente[v.membre_id] = (parVente[v.membre_id]||0) + (v.qty||0));
-      const parGofast = {}; gofasts.forEach(([,g]) => parGofast[g.membre_id] = (parGofast[g.membre_id]||0) + (g.count||0));
-
-      const topList = (obj, unit) => Object.entries(obj)
-        .filter(([id]) => membres[id] && !membres[id].invisible)
-        .sort((a,b) => b[1]-a[1]).slice(0,8)
-        .map(([id, n]) => `<tr><td>${gradeInfo(membres[id].grade).emoji} ${membres[id].prenom}</td><td class="amt">${n} ${unit}</td></tr>`).join('')
-        || `<tr><td colspan="2" class="empty">Rien pour le moment.</td></tr>`;
-
-      document.getElementById('top-vente').innerHTML = topList(parVente, '💊');
-      document.getElementById('top-gofast').innerHTML = topList(parGofast, '🏠');
-
       dernieresListes = { membres, quotas: cfg.quotas || {}, actions, gofasts, ventes, labos, fleecas, armureries };
-      chargerSemaines().then(renderQuotas);
+      chargerSemaines().then(() => { renderStats(); renderQuotas(); });
     });
   }
 </script>
