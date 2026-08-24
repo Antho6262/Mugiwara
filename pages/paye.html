@@ -121,18 +121,21 @@
     });
 
     function renderHistorique() {
-      db.ref('payes').get().then(snap => {
+      Promise.all([db.ref('payes').get(), db.ref('membres').get(), db.ref('semaines').get()]).then(([snap, mSnap, sSnap]) => {
+        const membresFrais = Object.fromEntries(entries(mSnap.val()));
+        const semainesFraiches = Object.fromEntries(entries(sSnap.val()));
+        const nomSemaineFrais = id => id ? (semainesFraiches[id] ? semainesFraiches[id].nom : 'Semaine supprimée') : '—';
         const rows = entries(snap.val());
         const tbody = document.getElementById('hist-body');
         tbody.innerHTML = rows.length === 0
           ? `<tr><td colspan="5" class="empty">Aucun paiement enregistré.</td></tr>`
           : rows.slice().reverse().map(([id, p]) => {
-              const m = membresMap[p.membre_id];
+              const m = membresFrais[p.membre_id];
               const g = m ? gradeInfo(m.grade) : null;
               const d = p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—';
               return `<tr>
                 <td>${g ? g.emoji : '❓'} ${m ? m.prenom : '?'}</td>
-                <td>${p.semaine_id ? nomSemaine(p.semaine_id) : '—'}</td>
+                <td>${nomSemaineFrais(p.semaine_id)}</td>
                 <td class="amt">${fmtMoney(p.montant)}</td>
                 <td>${p.par || '—'}</td>
                 <td>${d}</td>
