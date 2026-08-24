@@ -17,9 +17,15 @@
     <div class="note-hint" style="margin-bottom:16px;">💰 Le montant saisi est le total réel ramené au groupe. La part payée au membre (%) est calculée dessus, et réglée séparément dans Paye.</div>
 
     <div class="card" style="margin-bottom:20px;">
-      <div class="field" style="max-width:340px;">
-        <label>Semaine affichée</label>
-        <select id="t-semaine"></select>
+      <div class="grid cols-3">
+        <div class="field">
+          <label>Semaine affichée</label>
+          <select id="t-semaine"></select>
+        </div>
+        <div class="field">
+          <label>Membre affiché</label>
+          <select id="t-membre-filtre"><option value="">— Tous les membres —</option></select>
+        </div>
       </div>
     </div>
 
@@ -215,6 +221,7 @@
     let config = { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, taux_branche: 10 };
     let activeWeekId = null;
     let semaineFiltre = ''; // '' = toutes les semaines (avant sélection)
+    let membreFiltre = ''; // '' = tous les membres
     let lastActionsSnap = null, lastGofastSnap = null, lastVentesSnap = null, lastLabosSnap = null;
     const braquageRenders = {};
     db.ref('config/semaine_active_id').on('value', s => {
@@ -232,13 +239,20 @@
         '<option value="">— Toutes les semaines —</option>';
       sel.value = activeWeekId || '';
       semaineFiltre = sel.value;
-      renderActions(); renderGofast(); renderVente(); renderLabo();
-      Object.values(braquageRenders).forEach(fn => fn());
+      rafraichirTout();
       sel.addEventListener('change', () => {
         semaineFiltre = sel.value;
-        renderActions(); renderGofast(); renderVente(); renderLabo();
-        Object.values(braquageRenders).forEach(fn => fn());
+        rafraichirTout();
       });
+      document.getElementById('t-membre-filtre').addEventListener('change', e => {
+        membreFiltre = e.target.value;
+        rafraichirTout();
+      });
+    }
+
+    function rafraichirTout() {
+      renderActions(); renderGofast(); renderVente(); renderLabo();
+      Object.values(braquageRenders).forEach(fn => fn());
     }
 
     document.querySelectorAll('.tabs button').forEach(btn => {
@@ -282,6 +296,13 @@
               <label><input type="checkbox" value="${id}" ${cochesAvant.has(id) ? 'checked' : ''}> ${gradeInfo(m.grade).emoji} ${m.prenom}</label>
             `).join('');
       });
+
+      // Filtre d'affichage par membre (visible à tous, sert juste à consulter l'historique)
+      const selFiltre = document.getElementById('t-membre-filtre');
+      const curFiltre = selFiltre.value;
+      selFiltre.innerHTML = '<option value="">— Tous les membres —</option>' +
+        membresActifs.map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`).join('');
+      selFiltre.value = curFiltre;
     }
 
     function renderHints() {
@@ -304,7 +325,7 @@
     // ---- ACTIONS ----
     function renderActions() {
       if (!lastActionsSnap) return;
-      const rows = entries(lastActionsSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
+      const rows = entries(lastActionsSnap.val()).filter(([, item]) => (!semaineFiltre || item.semaine_id === semaineFiltre) && (!membreFiltre || item.membre_id === membreFiltre));
       const tbody = document.getElementById('a-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -354,7 +375,7 @@
     // ---- CAMBRIOLAGE ----
     function renderGofast() {
       if (!lastGofastSnap) return;
-      const rows = entries(lastGofastSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
+      const rows = entries(lastGofastSnap.val()).filter(([, item]) => (!semaineFiltre || item.semaine_id === semaineFiltre) && (!membreFiltre || item.membre_id === membreFiltre));
       const tbody = document.getElementById('g-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -426,7 +447,7 @@
     // ---- VENTE ----
     function renderVente() {
       if (!lastVentesSnap) return;
-      const rows = entries(lastVentesSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
+      const rows = entries(lastVentesSnap.val()).filter(([, item]) => (!semaineFiltre || item.semaine_id === semaineFiltre) && (!membreFiltre || item.membre_id === membreFiltre));
       const tbody = document.getElementById('v-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -501,7 +522,7 @@
     // ---- LABO ----
     function renderLabo() {
       if (!lastLabosSnap) return;
-      const rows = entries(lastLabosSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
+      const rows = entries(lastLabosSnap.val()).filter(([, item]) => (!semaineFiltre || item.semaine_id === semaineFiltre) && (!membreFiltre || item.membre_id === membreFiltre));
       const tbody = document.getElementById('l-table');
       const totals = {}; let grand = 0;
       if (rows.length === 0) {
@@ -593,7 +614,7 @@
       let lastSnap = null;
       function render() {
         if (!lastSnap) return;
-        const rows = entries(lastSnap.val()).filter(([, item]) => !semaineFiltre || item.semaine_id === semaineFiltre);
+        const rows = entries(lastSnap.val()).filter(([, item]) => (!semaineFiltre || item.semaine_id === semaineFiltre) && (!membreFiltre || (item.membres_ids || []).includes(membreFiltre)));
         const tbody = document.getElementById(prefix + '-table');
         let grand = 0;
         if (rows.length === 0) {
