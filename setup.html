@@ -3,98 +3,76 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Initialisation — The Roolio Family</title>
+<title>Les Mugiwara — Initialisation</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="login-body">
-
 <div class="login-wrap">
-  <div class="login-card fade-in" style="max-width:440px;">
-    <div class="login-brand">INITIALISATION</div>
-    <div class="login-sub">Usage unique — The Roolio Family</div>
-    <div class="sigil-rule"></div>
-
-    <p class="muted small" style="line-height:1.6;">
-      Ce bouton crée la base vierge dans Firebase : un seul membre
-      (<b style="color:var(--steel)">Tony Diaz — Fondateur</b>) avec accès total,
-      et toutes les autres données (stock, actions, semaines, membres suivants…)
-      restent vides pour être configurées depuis l'Admin.
+  <div class="login-card" style="max-width:440px;">
+    <img src="img/logo.png" alt="Les Mugiwara" class="login-logo">
+    <h1>INITIALISATION</h1>
+    <div class="login-sub">PREMIER ACCOSTAGE</div>
+    <p style="font-size:14px;color:var(--muted);margin-top:-10px;">
+      Crée le premier compte, grade Lead, accès total. Cette page ne doit servir qu'une fois.
     </p>
-
-    <div id="warnBox" class="panel" style="display:none; border-color:rgba(193,86,76,.4); margin-top:14px;">
-      <p class="small" style="color:var(--danger); margin:0;">⚠️ Des données existent déjà dans cette base (membres trouvés). Relancer l'initialisation écrasera le compte Tony Diaz mais ne touchera pas le reste.</p>
-    </div>
-
-    <div class="field" style="margin-top:18px;">
-      <label>Mot de passe pour Tony Diaz</label>
-      <input type="password" id="inpPass" value="tony2026">
-      <p class="small muted" style="margin-top:4px;">Par défaut : prénom + 2026. Modifiable ici avant l'initialisation.</p>
-    </div>
-
-    <button class="btn btn-primary" onclick="initialiser()">Initialiser le site</button>
-    <div id="statusMsg" class="login-error" style="color:var(--success);"></div>
-    <div class="login-foot"><a href="index.html">← Retour à la connexion</a></div>
+    <form id="form-setup">
+      <div class="field">
+        <label>Ton pseudo</label>
+        <input type="text" id="s-pseudo" placeholder="Ex: Luffy" required>
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="s-pass" placeholder="Choisis un mot de passe" required>
+      </div>
+      <button class="submit" type="submit" style="margin-top:6px;">Initialiser le site</button>
+    </form>
+    <div class="login-error" id="s-error"></div>
+    <div class="login-links"><a href="index.html">Retour à la connexion</a></div>
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script>
-(async function checkExisting() {
-  try {
-    const snap = await db.ref("membres").once("value");
-    if (snap.val()) document.getElementById("warnBox").style.display = "block";
-  } catch (e) {}
-})();
+  document.getElementById('form-setup').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('s-error');
+    errEl.textContent = '';
+    const pseudo = document.getElementById('s-pseudo').value.trim();
+    const pass = document.getElementById('s-pass').value;
 
-async function initialiser() {
-  const pass = document.getElementById("inpPass").value || "tony2026";
-  const statusEl = document.getElementById("statusMsg");
-  statusEl.style.color = "var(--steel)";
-  statusEl.textContent = "Initialisation en cours…";
+    try {
+      const existing = await db.ref('membres').get();
+      if (existing.exists() && Object.keys(existing.val()).length > 0) {
+        errEl.textContent = "Le site est déjà initialisé — connecte-toi normalement.";
+        return;
+      }
 
-  try {
-    const tonyId = "tony_diaz";
+      const id = uid();
+      await db.ref('membres/' + id).set({
+        prenom: pseudo,
+        mot_de_passe: pass,
+        grade: 'fondateur',
+        role: 'admin',
+        actif: true
+      });
+      await db.ref('config').set({
+        nom_groupe: 'Les Mugiwara',
+        taux_action_pct: 25,
+        taux_cambriolage: 700,
+        taux_pochon: 25,
+        taux_branche: 10,
+        blanchiment_taux: 20
+      });
 
-    await db.ref("membres/" + tonyId).set({
-      prenom: "Tony",
-      nom: "Diaz",
-      grade: "Fondateur",
-      role: "admin",
-      mot_de_passe: pass,
-      actif: true,
-      quota: 0
-    });
-
-    await db.ref("grades/fondateur").set({ nom: "Fondateur", ordre: 1 });
-
-    // accès total pour le Fondateur sur toutes les pages
-    const permsFondateur = {};
-    PAGES_DISPO.forEach(p => permsFondateur[p.page] = true);
-    await db.ref("permissions/Fondateur").set(permsFondateur);
-
-    const semaineId = "semaine_1";
-    await db.ref("semaines/" + semaineId).set({
-      nom: "Semaine 1",
-      bloquee: false,
-      createdAt: Date.now()
-    });
-
-    // structures vides prêtes à être remplies depuis l'Admin
-    await db.ref("config").update({
-      blanchiment_taux: 35,
-      nom_groupe: "The Roolio Family"
-    });
-
-    statusEl.style.color = "var(--success)";
-    statusEl.textContent = "✅ Site initialisé. Redirection…";
-    setTimeout(() => window.location.href = "index.html", 1400);
-  } catch (e) {
-    statusEl.style.color = "var(--danger)";
-    statusEl.textContent = "Erreur : " + e.message + " (vérifiez js/firebase-config.js et les règles de la base).";
-  }
-}
+      setSession({ id, prenom: pseudo, grade: 'fondateur', role: 'admin' });
+      window.location.href = 'pages/dashboard.html';
+    } catch (err) {
+      errEl.textContent = "Erreur d'initialisation — vérifie ta config Firebase et les règles de la base.";
+      console.error(err);
+    }
+  });
 </script>
 </body>
 </html>

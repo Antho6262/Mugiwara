@@ -3,1238 +3,375 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin — The Roolio Family</title>
+<title>Les Mugiwara — Admin</title>
 <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-<div id="shell"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Admin</h2>
+      <div class="rule"></div>
+    </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <div class="tabs">
+      <button data-tab="semaines" class="active">🗓️ Semaines</button>
+      <button data-tab="taux">💰 Taux</button>
+      <button data-tab="quotas">📋 Quotas</button>
+      <button data-tab="membres">👒 Membres</button>
+      <button data-tab="stockadmin">📦 Stock</button>
+      <button data-tab="permissions">👁️ Permissions</button>
+    </div>
+
+    <!-- SEMAINES -->
+    <div class="tabpanel active" id="panel-semaines">
+      <div class="card">
+        <h3>Semaine en cours</h3>
+        <div id="semaine-active"></div>
+        <div style="margin-top:14px;"><button class="ghost" id="btn-bloquer-semaine" title="Clôture la semaine en cours avant sa date de fin et démarre une nouvelle semaine">Bloquer la semaine en cours maintenant</button></div>
+        <div class="note-hint">Nouvelle semaine créée automatiquement chaque lundi (ou dès qu'un membre se connecte après). Bloquer maintenant force la clôture avant terme.</div>
+      </div>
+      <div class="card">
+        <h3>Historique</h3>
+        <table>
+          <thead><tr><th>Semaine</th><th>Début</th><th>Fin</th><th>Statut</th></tr></thead>
+          <tbody id="semaine-liste"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAUX -->
+    <div class="tabpanel" id="panel-taux">
+      <div class="card">
+        <h3>Taux & rémunération</h3>
+        <div class="grid cols-3">
+          <div class="field"><label>% par action (épicerie, ATM, go fast)</label><input type="number" id="cfg-percent" min="0" max="100" step="1"></div>
+          <div class="field"><label>$ par cambriolage</label><input type="number" id="cfg-gofast" min="0" step="1"></div>
+          <div class="field"><label>$ par pochon vendu</label><input type="number" id="cfg-pochon" min="0" step="1"></div>
+          <div class="field"><label>% frais de blanchiment</label><input type="number" id="cfg-blanchiment" min="0" max="100" step="1"></div>
+          <div class="field"><label>$ par branche produite (labo)</label><input type="number" id="cfg-branche" min="0" step="1"></div>
+        </div>
+        <div class="note-hint">Action = % du montant total saisi. Cambriolage/Vente/Labo = tarif fixe par unité, indépendant du montant total (qui appartient entièrement au groupe).</div>
+        <div style="margin-top:16px;"><button class="submit" id="cfg-save">Enregistrer</button></div>
+      </div>
+    </div>
+
+    <!-- QUOTAS -->
+    <div class="tabpanel" id="panel-quotas">
+      <div class="card">
+        <h3>Objectifs hebdomadaires par catégorie</h3>
+        <div class="grid cols-3">
+          <div class="field"><label>🏴‍☠️ Actions (+ 🏠 Cambriolage)</label><input type="number" id="q-actions" min="0" step="1"></div>
+          <div class="field"><label>💊 Ventes</label><input type="number" id="q-vente" min="0" step="1"></div>
+          <div class="field"><label>🧪 Récoltes Labo</label><input type="number" id="q-labo" min="0" step="1"></div>
+          <div class="field"><label>🏦 Fleeca</label><input type="number" id="q-fleeca" min="0" step="1"></div>
+          <div class="field"><label>🔫 Armurerie</label><input type="number" id="q-armurerie" min="0" step="1"></div>
+        </div>
+        <div class="note-hint">Un objectif à 0 ou vide n'affiche pas de barre de progression pour cette catégorie. Remis à zéro à chaque nouvelle semaine.</div>
+        <div style="margin-top:16px;"><button class="submit" id="q-save">Enregistrer</button></div>
+      </div>
+    </div>
+
+    <!-- MEMBRES -->
+    <div class="tabpanel" id="panel-membres">
+      <div class="card">
+        <h3>Équipage</h3>
+        <form class="entry" id="form-member">
+          <div class="field"><label>Pseudo</label><input type="text" id="m-name" placeholder="Pseudo" required title="Pseudo utilisé pour se connecter"></div>
+          <div class="field"><label>Mot de passe</label><input type="text" id="m-pass" placeholder="Mot de passe" required title="Mot de passe de connexion du membre"></div>
+          <div class="field"><label>Grade</label><select id="m-grade" title="Grade initial du membre"></select></div>
+          <button class="submit" type="submit" title="Crée le compte et l'ajoute à l'équipage">Ajouter au crew</button>
+        </form>
+        <div id="member-list" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <!-- STOCK (création) -->
+    <div class="tabpanel" id="panel-stockadmin">
+      <div class="card">
+        <h3>Nouvelle catégorie de stock</h3>
+        <form class="entry" id="form-cat-admin">
+          <div class="field"><label>Nom</label><input type="text" id="ca-nom" placeholder="Ex: Drogue" required></div>
+          <div class="field"><label>Emoji</label><input type="text" id="ca-emoji" placeholder="💊" maxlength="4"></div>
+          <button class="submit" type="submit">Créer</button>
+        </form>
+      </div>
+      <div id="stockadmin-list"></div>
+    </div>
+
+    <!-- PERMISSIONS -->
+    <div class="tabpanel" id="panel-permissions">
+      <div class="card">
+        <h3>Visibilité des pages par grade</h3>
+        <div class="note-hint" style="margin-bottom:14px;">Coché = visible pour ce grade. Le Fondateur et les comptes Admin voient toujours tout, quoi qu'il arrive. Par défaut (rien décoché) tout le monde voit tout.</div>
+        <div style="overflow-x:auto;">
+          <table id="perm-table"></table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="../js/firebase-config.js"></script>
 <script src="../js/app.js"></script>
 <script>
-let SESSION;
-const TABS = ["semaines", "membres", "stock", "actions", "quotas", "grades", "visibilite", "permissions", "config", "audit"];
-const TAB_LABELS = { visibilite: "Visibilité", audit: "Audit" };
-let currentTab = "semaines";
+  const membre = initShell('admin', 'Admin');
+  if (membre) {
 
-/* ---------- Fonctions autonomes (n'existaient nulle part, plantaient
-   silencieusement chaque action admin après l'écriture Firebase) ---------- */
-const VOLTA_LOGO_URL = "img/logo.png"; // ⚠️ à remplacer par l'URL publique du logo une fois le site déployé (Discord a besoin d'une URL absolue, pas d'un chemin relatif)
-const VOLTA_COLOR_STEEL = 0x8b1518;
-const VOLTA_COLOR_GOLD = 0xc41e22;
-
-async function logAudit(action, details) {
-  try {
-    await db.ref("audit/" + uid()).set({
-      action, details: details || "", membre: (SESSION && SESSION.prenom) || "?", createdAt: Date.now(),
+    document.querySelectorAll('.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
     });
-  } catch (e) { console.error("logAudit KO", e); }
-}
 
-async function envoyerWebhookEmbed(webhook, embed) {
-  if (!webhook) return;
-  try {
-    await fetch(webhook, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ embeds: [{ footer: { text: "THE ROOLIO FAMILY" }, timestamp: new Date().toISOString(), ...embed }] }),
-    });
-  } catch (e) { console.error("webhook KO", e.message); }
-}
-
-/* ---------- Bannière image du résumé de semaine (même style que le bot Discord) ---------- */
-let _policesBanniereChargees = false;
-function chargerPolicesBanniere() {
-  if (_policesBanniereChargees) return Promise.resolve();
-  return new Promise((resolve) => {
-    let link = document.getElementById("volta-banner-fonts");
-    if (!link) {
-      link = document.createElement("link");
-      link.id = "volta-banner-fonts";
-      link.rel = "stylesheet";
-      link.href = "https://fonts.googleapis.com/css2?family=Anton&family=Poppins:wght@400;600;700;800&display=swap";
-      document.head.appendChild(link);
-    }
-    const finir = () => {
+    // ---- Semaines ----
+    function renderSemaines() {
       Promise.all([
-        document.fonts.load("58px Anton"),
-        document.fonts.load("400 16px Poppins"),
-        document.fonts.load("600 16px Poppins"),
-        document.fonts.load("700 16px Poppins"),
-        document.fonts.load("800 16px Poppins"),
-      ]).then(() => { _policesBanniereChargees = true; resolve(); }).catch(() => resolve());
-    };
-    if (link.sheet) finir(); else link.onload = finir;
-    setTimeout(finir, 2500); // filet de sécurité si onload ne se déclenche pas
-  });
-}
+        db.ref('config/semaine_active_id').get(),
+        db.ref('semaines').get()
+      ]).then(([activeSnap, allSnap]) => {
+        const activeId = activeSnap.val();
+        const all = entries(allSnap.val()).sort((a, b) => (b[1].debut || '').localeCompare(a[1].debut || ''));
 
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-function roundRectTop(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x, y + h);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h);
-  ctx.closePath();
-}
-function shadeColor(hex, percent) {
-  const num = parseInt(hex.replace("#", ""), 16);
-  let r = (num >> 16) + percent, g = ((num >> 8) & 0x00ff) + percent, b = (num & 0x0000ff) + percent;
-  r = Math.min(255, Math.max(0, r)); g = Math.min(255, Math.max(0, g)); b = Math.min(255, Math.max(0, b));
-  return `rgb(${r},${g},${b})`;
-}
+        const active = all.find(([id]) => id === activeId);
+        document.getElementById('semaine-active').innerHTML = active
+          ? `<div class="badge admin" style="font-size:14px;">🗓️ Semaine active : ${active[1].nom}</div>`
+          : `<div class="empty">Aucune semaine active pour l'instant — elle sera créée automatiquement.</div>`;
 
-async function genererBanniereResumeWeb(resume, nomSemaine) {
-  await chargerPolicesBanniere();
-  const W = 1100, H = 2600;
-  const canvas = document.createElement("canvas");
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext("2d");
-
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-  bgGrad.addColorStop(0, "#1a0506"); bgGrad.addColorStop(0.5, "#0d0203"); bgGrad.addColorStop(1, "#000000");
-  ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, W, H);
-
-  ctx.save(); ctx.globalAlpha = 0.04; ctx.strokeStyle = "#ffffff";
-  for (let i = -H; i < W; i += 40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke(); }
-  ctx.restore();
-
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#8b1518"; ctx.font = "24px Poppins"; ctx.fillText("R O O L I O", W / 2, 70);
-  ctx.fillStyle = "#ffffff"; ctx.font = "58px Anton"; ctx.fillText("RÉSUMÉ DE LA SEMAINE", W / 2, 135);
-  ctx.fillStyle = "#a8a8a8"; ctx.font = "26px Poppins"; ctx.fillText(nomSemaine, W / 2, 172);
-
-  const gradLine = ctx.createLinearGradient(80, 0, W - 80, 0);
-  gradLine.addColorStop(0, "rgba(196,30,34,0)"); gradLine.addColorStop(0.5, "#c41e22"); gradLine.addColorStop(1, "rgba(196,30,34,0)");
-  ctx.strokeStyle = gradLine; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(80, 195); ctx.lineTo(W - 80, 195); ctx.stroke();
-
-  const totalGains = resume.gainsSale + resume.gainsPropre;
-  const gy = 225, gh = 150;
-  const gainGrad = ctx.createLinearGradient(0, gy, 0, gy + gh);
-  gainGrad.addColorStop(0, "#3a0708"); gainGrad.addColorStop(1, "#1a0304");
-  ctx.fillStyle = gainGrad; roundRect(ctx, 60, gy, W - 120, gh, 18); ctx.fill();
-  ctx.strokeStyle = "#c41e22"; ctx.lineWidth = 1.5; roundRect(ctx, 60, gy, W - 120, gh, 18); ctx.stroke();
-  ctx.fillStyle = "#e0a0a0"; ctx.font = "600 22px Poppins"; ctx.fillText("GAIN TOTAL DE LA SEMAINE", W / 2, gy + 45);
-  ctx.fillStyle = "#ffffff"; ctx.font = "64px Anton"; ctx.fillText(formatMoney(totalGains), W / 2, gy + 115);
-
-  const sy = gy + gh + 30, sh = 90;
-  const cols = [
-    { label: "ACTIONS", value: `${resume.nbActions}`, sub: `${resume.reussites} réussies · ${resume.echecs} échouées` },
-    { label: "GAINS SALE", value: formatMoney(resume.gainsSale), sub: "argent non blanchi" },
-    { label: "GAINS PROPRE", value: formatMoney(resume.gainsPropre), sub: "argent blanchi" },
-  ];
-  const colW = (W - 120 - 2 * 20) / 3;
-  cols.forEach((c, i) => {
-    const cx = 60 + i * (colW + 20);
-    ctx.fillStyle = "#140506"; roundRect(ctx, cx, sy, colW, sh, 14); ctx.fill();
-    ctx.strokeStyle = "rgba(196,30,34,0.4)"; ctx.lineWidth = 1; roundRect(ctx, cx, sy, colW, sh, 14); ctx.stroke();
-    ctx.fillStyle = "#8b8b8b"; ctx.font = "600 16px Poppins"; ctx.fillText(c.label, cx + colW / 2, sy + 28);
-    ctx.fillStyle = "#ffffff"; ctx.font = "800 26px Poppins"; ctx.fillText(c.value, cx + colW / 2, sy + 58);
-    ctx.fillStyle = "#6b6b6b"; ctx.font = "13px Poppins"; ctx.fillText(c.sub, cx + colW / 2, sy + 78);
-  });
-
-  let py = sy + sh + 55;
-  ctx.fillStyle = "#ffffff"; ctx.font = "34px Anton"; ctx.fillText("PODIUM", W / 2, py);
-
-  const podium = resume.classementArr.slice(0, 3);
-  const medailleColors = ["#ffd54a", "#d9d9d9", "#c98a4b"];
-  const barHeights = [130, 100, 78];
-  const order = [1, 0, 2];
-  const podiumW = 260, gap = 24;
-  const totalPodiumW = podiumW * 3 + gap * 2;
-  const startX = (W - totalPodiumW) / 2;
-  const contentTop = py + 90;
-  const barTopMax = contentTop + 130;
-  const podiumBaseY = barTopMax + barHeights[0];
-
-  order.forEach((rankIdx) => {
-    const m = podium[rankIdx];
-    if (!m) return;
-    const visualPos = order.indexOf(rankIdx);
-    const bx = startX + visualPos * (podiumW + gap);
-    const bh = barHeights[rankIdx];
-    const by = podiumBaseY - bh;
-
-    ctx.fillStyle = "#ffffff"; ctx.font = "700 22px Poppins"; ctx.fillText(m.prenom, bx + podiumW / 2, by - 45);
-    ctx.fillStyle = "#a8a8a8"; ctx.font = "16px Poppins"; ctx.fillText(`${m.n} action(s)`, bx + podiumW / 2, by - 22);
-
-    ctx.beginPath(); ctx.arc(bx + podiumW / 2, by - 95, 24, 0, Math.PI * 2);
-    ctx.fillStyle = medailleColors[rankIdx]; ctx.fill();
-    ctx.fillStyle = "#1a0506"; ctx.font = "800 22px Poppins"; ctx.fillText(`${rankIdx + 1}`, bx + podiumW / 2, by - 87);
-
-    const barGrad = ctx.createLinearGradient(0, by, 0, by + bh);
-    barGrad.addColorStop(0, medailleColors[rankIdx]); barGrad.addColorStop(1, shadeColor(medailleColors[rankIdx], -40));
-    ctx.fillStyle = barGrad; roundRectTop(ctx, bx, by, podiumW, bh, 10); ctx.fill();
-  });
-
-  py = podiumBaseY + 45;
-
-  const reste = resume.classementArr.slice(3, 9);
-  if (reste.length) {
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#8b8b8b"; ctx.font = "600 18px Poppins"; ctx.fillText("CLASSEMENT", 70, py);
-    reste.forEach((m, i) => {
-      const ry = py + 38 + i * 34;
-      ctx.fillStyle = "#c9c9c9"; ctx.font = "600 17px Poppins"; ctx.fillText(`${i + 4}.`, 70, ry);
-      ctx.fillStyle = "#ffffff"; ctx.font = "17px Poppins"; ctx.fillText(m.prenom, 105, ry);
-      ctx.textAlign = "right"; ctx.fillStyle = "#8b8b8b"; ctx.fillText(`${m.n} action(s)`, W - 70, ry);
-      ctx.textAlign = "left";
-    });
-    py += 38 + reste.length * 34 + 25;
-  }
-
-  if (resume.totalVendu > 0) {
-    ctx.textAlign = "center";
-    ctx.strokeStyle = gradLine;
-    ctx.beginPath(); ctx.moveTo(80, py); ctx.lineTo(W - 80, py); ctx.stroke();
-    py += 40;
-    ctx.fillStyle = "#ffffff"; ctx.font = "26px Anton";
-    ctx.fillText(`VENTES — ${resume.totalVendu} au total (${formatMoney(resume.gainsVentes)})`, W / 2, py);
-    py += 40;
-    ctx.textAlign = "left";
-    resume.detailVentesArr.forEach((v, i) => {
-      const ry = py + i * 30;
-      ctx.fillStyle = "#c9c9c9"; ctx.font = "600 16px Poppins"; ctx.fillText(v.produit, 90, ry);
-      ctx.textAlign = "right"; ctx.fillStyle = "#e0a0a0"; ctx.fillText(`${v.qte}`, W - 90, ry);
-      ctx.textAlign = "left";
-    });
-    py += resume.detailVentesArr.length * 30 + 15;
-  }
-
-  if (resume.detailVentesParMembreArr && resume.detailVentesParMembreArr.length) {
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#ffffff"; ctx.font = "26px Anton";
-    ctx.fillText("QUI A VENDU QUOI", W / 2, py);
-    py += 32;
-
-    ctx.textAlign = "left";
-    resume.detailVentesParMembreArr.forEach((m) => {
-      ctx.fillStyle = "#ffffff"; ctx.font = "700 17px Poppins"; ctx.fillText(m.prenom, 90, py);
-      ctx.fillStyle = "#a8a8a8"; ctx.font = "16px Poppins";
-      const detail = m.produits.map(p => `${p.produit} : ${p.qte}`).join("   ·   ");
-      ctx.fillText(detail, 90, py + 22);
-      py += 52;
-    });
-    py += 5;
-  }
-
-  const footerY = py + 55;
-  const finalH = footerY + 35;
-
-  ctx.textAlign = "center"; ctx.fillStyle = "#5a5a5a"; ctx.font = "15px Poppins";
-  ctx.fillText("THE ROOLIO FAMILY", W / 2, footerY);
-
-  const SCALE = 2;
-  const finalCanvas = document.createElement("canvas");
-  finalCanvas.width = W * SCALE; finalCanvas.height = finalH * SCALE;
-  const fctx = finalCanvas.getContext("2d");
-  fctx.scale(SCALE, SCALE);
-  fctx.drawImage(canvas, 0, 0, W, finalH, 0, 0, W, finalH);
-
-  const vg = fctx.createRadialGradient(W / 2, finalH * 0.3, 100, W / 2, finalH * 0.3, W * 0.9);
-  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.55)");
-  fctx.fillStyle = vg; fctx.fillRect(0, 0, W, finalH);
-  fctx.strokeStyle = "#c41e22"; fctx.lineWidth = 3; fctx.strokeRect(10, 10, W - 20, finalH - 20);
-
-  return new Promise((resolve) => finalCanvas.toBlob((blob) => resolve(blob), "image/png"));
-}
-
-async function envoyerWebhookImage(webhook, blob, filename) {
-  const form = new FormData();
-  form.append("payload_json", JSON.stringify({ embeds: [{ color: 0xc41e22, image: { url: "attachment://" + filename } }] }));
-  form.append("files[0]", blob, filename);
-  await fetch(webhook, { method: "POST", body: form });
-}
-
-/* Dates ancrées Europe/Paris (identique à la logique du bot Discord). */
-function getParisParts(ts) {
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-  });
-  const parts = fmt.formatToParts(new Date(ts));
-  const get = (t) => Number(parts.find((p) => p.type === t).value);
-  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour") === 24 ? 0 : get("hour"), minute: get("minute"), second: get("second") };
-}
-function ajouterJoursCivils(y, m, d, jours) {
-  const anchor = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-  anchor.setUTCDate(anchor.getUTCDate() + jours);
-  return { year: anchor.getUTCFullYear(), month: anchor.getUTCMonth() + 1, day: anchor.getUTCDate() };
-}
-function parisWallToUTC(y, m, d, h, mi, s) {
-  let guess = Date.UTC(y, m - 1, d, h, mi, s || 0);
-  for (let i = 0; i < 2; i++) {
-    const p = getParisParts(guess);
-    const guessAsIfLocal = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
-    guess += Date.UTC(y, m - 1, d, h, mi, s || 0) - guessAsIfLocal;
-  }
-  return guess;
-}
-function fmtJJMM(ts) {
-  const p = getParisParts(ts);
-  return String(p.day).padStart(2, "0") + "/" + String(p.month).padStart(2, "0");
-}
-function nomAutoSemaine(debut, fin) { return "Semaine du " + fmtJJMM(debut) + " au " + fmtJJMM(fin); }
-function prochainesBornes(derniere) {
-  if (!derniere || !derniere.fin) {
-    // Pas de semaine précédente : ancre sur "maintenant" (dimanche 19h le plus récent).
-    const now = Date.now();
-    const p = getParisParts(now);
-    const wd = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", weekday: "short" }).format(new Date(now));
-    const weekday = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[wd];
-    let dimRef = ajouterJoursCivils(p.year, p.month, p.day, -weekday);
-    let debut = parisWallToUTC(dimRef.year, dimRef.month, dimRef.day, 19, 0, 0);
-    if (debut > now) { dimRef = ajouterJoursCivils(dimRef.year, dimRef.month, dimRef.day, -7); debut = parisWallToUTC(dimRef.year, dimRef.month, dimRef.day, 19, 0, 0); }
-    const dimSuivant = ajouterJoursCivils(dimRef.year, dimRef.month, dimRef.day, 7);
-    const fin = parisWallToUTC(dimSuivant.year, dimSuivant.month, dimSuivant.day, 19, 0, 0);
-    return { debut, fin, verrouAt: fin };
-  }
-  const debut = derniere.fin;
-  const p = getParisParts(debut);
-  const dimSuivant = ajouterJoursCivils(p.year, p.month, p.day, 7);
-  const fin = parisWallToUTC(dimSuivant.year, dimSuivant.month, dimSuivant.day, 19, 0, 0);
-  return { debut, fin, verrouAt: fin };
-}
-/* Ouvre la semaine suivante après un blocage manuel, avec protection anti-doublon
-   (même mécanisme d'index que le bot Discord). */
-async function creerSemaineSuivante(derniere) {
-  const bounds = prochainesBornes(derniere);
-  const idxRef = db.ref("semaine_index/" + bounds.debut);
-  const existe = await idxRef.once("value");
-  if (existe.exists()) { console.log("Semaine suivante déjà créée par ailleurs."); return; }
-  const id = uid();
-  const nom = nomAutoSemaine(bounds.debut, bounds.fin);
-  await idxRef.set(id);
-  await db.ref("semaines/" + id).set({ nom, bloquee: false, createdAt: Date.now(), debut: bounds.debut, fin: bounds.fin, verrouAt: bounds.verrouAt });
-}
-/* Stats/badges optionnels : best-effort, ne doit jamais faire planter le blocage de semaine. */
-async function majStatsEtBadges(weekId) {
-  try {
-    const snap = await db.ref("actions/" + weekId).once("value");
-    const actions = entries(snap.val()).map(([, a]) => a).filter((a) => a.resultat === "Réussite");
-    if (!actions.length) return;
-    const parMembre = {};
-    actions.forEach((a) => {
-      if (!parMembre[a.membre_id]) parMembre[a.membre_id] = 0;
-      parMembre[a.membre_id] += Number(a.quantite || 1);
-    });
-    for (const [membreId, count] of Object.entries(parMembre)) {
-      const statsSnap = await db.ref("stats_membres/" + membreId).once("value");
-      const stats = statsSnap.val() || { total_actions: 0 };
-      stats.total_actions = (stats.total_actions || 0) + count;
-      await db.ref("stats_membres/" + membreId).set(stats);
-    }
-  } catch (e) { console.error("majStatsEtBadges KO", e); }
-}
-
-function renderContent() {
-  document.getElementById("content").innerHTML = `
-    <h1>Admin</h1>
-    <div class="sigil-rule"></div>
-    <div class="tabs" id="tabsBar"></div>
-    <div id="tabBody"></div>
-  `;
-  document.getElementById("tabsBar").innerHTML = TABS.map(t =>
-    `<div class="tab${t === currentTab ? ' active' : ''}" onclick="switchTab('${t}')">${TAB_LABELS[t] || (t.charAt(0).toUpperCase() + t.slice(1))}</div>`
-  ).join("");
-  loadTab(currentTab);
-}
-function switchTab(t) { currentTab = t; renderContent(); }
-
-async function loadTab(t) {
-  const body = document.getElementById("tabBody");
-  body.innerHTML = '<p class="muted">Chargement…</p>';
-  if (t === "semaines") return tabSemaines(body);
-  if (t === "membres") return tabMembres(body);
-  if (t === "stock") return tabStock(body);
-  if (t === "actions") return tabActions(body);
-  if (t === "quotas") return tabQuotas(body);
-  if (t === "grades") return tabGrades(body);
-  if (t === "visibilite") return tabVisibilite(body);
-  if (t === "permissions") return tabPermissions(body);
-  if (t === "config") return tabConfig(body);
-  if (t === "audit") return tabAudit(body);
-}
-
-/* ===================== SEMAINES ===================== */
-let SEMAINES_LISTENER_ACTIF = false;
-
-function renderTabSemaines(body, list) {
-  body.innerHTML = `
-    <div class="panel">
-      <div class="panel-head"><h2>Nouvelle semaine</h2></div>
-      <div class="row"><input type="text" id="newSemaineNom" placeholder="Nom (ex: Semaine 2)">
-      <button class="btn btn-primary" onclick="creerSemaine()">Créer</button></div>
-      <p class="small muted mt8">La semaine créée s'enchaîne automatiquement après la dernière semaine existante (7 jours, verrouillage le dimanche à 19h00). Laisse le nom vide pour un nom automatique.</p>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Semaines</h2></div>
-      <table><thead><tr><th>Nom</th><th>Statut</th><th>Créée le</th><th>Verrouillage auto</th><th></th></tr></thead>
-        <tbody>${list.length ? list.map(s => `
-          <tr><td>${s.nom}</td><td><span class="badge ${s.bloquee ? 'badge-fail' : 'badge-ok'}">${s.bloquee ? 'Bloquée' : 'Actif'}</span></td>
-          <td class="small muted">${s.createdAt ? new Date(s.createdAt).toLocaleString('fr-FR') : '-'}</td>
-          <td class="small muted">${s.verrouAt ? new Date(s.verrouAt).toLocaleString('fr-FR') : '—'}</td>
-          <td>
-            ${s.bloquee ? `<span class="btn btn-sm" onclick="toggleSemaine('${s.id}', false)">Débloquer</span>`
-                        : `<span class="btn btn-sm btn-gold" onclick="bloquerSemaine('${s.id}','${s.nom}')">Bloquer + Résumé</span>`}
-            <span class="btn btn-sm btn-danger" onclick="suppSemaine('${s.id}')">Suppr.</span>
-          </td></tr>
-        `).join("") : '<tr class="empty-row"><td colspan="5">Aucune semaine</td></tr>'}</tbody></table>
-    </div>
-    <div class="panel" id="resumeWrap" style="display:none;">
-      <div class="panel-head"><h2>Résumé de semaine</h2></div>
-      <textarea id="resumeText" rows="10" readonly></textarea>
-      <p class="small muted mt8">Copie ce texte dans Discord, ou configure un webhook dans Admin → Config pour l'envoi automatique.</p>
-    </div>
-  `;
-}
-
-async function tabSemaines(body) {
-  if (SEMAINES_LISTENER_ACTIF) {
-    // Le listener tourne déjà (onglet quitté puis revisité) : un simple re-rendu
-    // avec les dernières données connues suffit, pas besoin de se ré-abonner.
-    const snap = await db.ref("semaines").once("value");
-    const list = entries(snap.val()).map(([id, s]) => ({ id, ...s })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    renderTabSemaines(body, list);
-    return;
-  }
-  SEMAINES_LISTENER_ACTIF = true;
-  db.ref("semaines").on("value", (snap) => {
-    if (currentTab !== "semaines") return; // évite de peindre un onglet qui n'est plus affiché
-    const list = entries(snap.val()).map(([id, s]) => ({ id, ...s })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    renderTabSemaines(document.getElementById("tabBody"), list);
-  });
-}
-/* Crée la prochaine semaine, enchaînée après la dernière semaine existante
-   (peu importe si celle-ci est bloquée ou non). Évite les doublons de créneau
-   qui provoquaient un verrouillage instantané. */
-async function creerSemaine() {
-  const saisie = document.getElementById("newSemaineNom").value.trim();
-  const snap = await db.ref("semaines").once("value");
-  const list = entries(snap.val()).map(([id, s]) => ({ id, ...s })).sort((a, b) => (b.debut || 0) - (a.debut || 0));
-  const derniere = list[0] || null;
-  const bounds = prochainesBornes(derniere);
-
-  const idxRef = db.ref("semaine_index/" + bounds.debut);
-  const existeSnap = await idxRef.once("value");
-  if (existeSnap.exists()) {
-    toast("Cette semaine existe déjà.", true);
-    loadTab("semaines");
-    return;
-  }
-
-  const nom = saisie || nomAutoSemaine(bounds.debut, bounds.fin);
-  const id = uid();
-  await db.ref("semaines/" + id).set({
-    nom, bloquee: false, createdAt: Date.now(),
-    debut: bounds.debut, fin: bounds.fin, verrouAt: bounds.verrouAt
-  });
-  await idxRef.set(id);
-  logAudit("Semaine créée", nom);
-  toast("Semaine créée.");
-  loadTab("semaines");
-}
-async function toggleSemaine(id, bloquee) {
-  await db.ref("semaines/" + id).update({ bloquee, closedAt: bloquee ? Date.now() : null });
-  logAudit(bloquee ? "Semaine bloquée manuellement" : "Semaine débloquée", id);
-  loadTab("semaines");
-}
-async function suppSemaine(id) {
-  if (!confirm("Supprimer cette semaine et toutes ses actions ?")) return;
-  await db.ref("semaines/" + id).remove();
-  await db.ref("actions/" + id).remove();
-  logAudit("Semaine supprimée", id);
-  loadTab("semaines");
-}
-/* Blocage manuel : verrouille la semaine, affiche le résumé, ET ouvre
-   automatiquement la semaine suivante (même comportement que le
-   verrouillage automatique de 19h00). */
-async function bloquerSemaine(id, nom) {
-  const snap = await db.ref("actions/" + id).once("value");
-  const actions = entries(snap.val()).map(([aid, a]) => a);
-  const gainsSale = actions.reduce((acc, a) => acc + Number(a.argent_sale || 0), 0);
-  const gainsPropre = actions.reduce((acc, a) => acc + Number(a.argent_propre || 0), 0);
-  const reussites = actions.filter(a => a.resultat === "Réussite").length;
-  const echecs = actions.filter(a => a.resultat === "Échec").length;
-  const parMembre = {};
-  actions.forEach(a => { parMembre[a.prenom_membre] = (parMembre[a.prenom_membre] || 0) + 1; });
-  const classement = Object.entries(parMembre).sort((a, b) => b[1] - a[1])
-    .map(([p, n], i) => `${i + 1}. ${p} — ${n} action(s)`).join("\n");
-
-  const ventes = actions.filter(a => a.produit_drogue && a.resultat === "Réussite");
-  const parProduit = {};
-  ventes.forEach(a => { parProduit[a.produit_drogue] = (parProduit[a.produit_drogue] || 0) + Number(a.quantite || 0); });
-  const totalVendu = Object.values(parProduit).reduce((acc, n) => acc + n, 0);
-  const gainsVentes = ventes.reduce((acc, a) => acc + Number(a.gains_totaux || 0), 0);
-  const detailVentes = Object.entries(parProduit).sort((a, b) => b[1] - a[1])
-    .map(([produit, qte]) => `${produit} : ${qte}`).join("\n");
-
-  const parMembreVentes = {};
-  ventes.forEach(a => {
-    if (!parMembreVentes[a.prenom_membre]) parMembreVentes[a.prenom_membre] = {};
-    parMembreVentes[a.prenom_membre][a.produit_drogue] = (parMembreVentes[a.prenom_membre][a.produit_drogue] || 0) + Number(a.quantite || 0);
-  });
-  const detailVentesParMembre = Object.entries(parMembreVentes)
-    .sort((a, b) => Object.values(b[1]).reduce((s, n) => s + n, 0) - Object.values(a[1]).reduce((s, n) => s + n, 0))
-    .map(([prenom, produits]) => `${prenom} — ${Object.entries(produits).map(([p, q]) => `${p} : ${q}`).join(", ")}`)
-    .join("\n");
-
-  const texte = `📋 RÉSUMÉ — ${nom} — The Roolio Family\n` +
-    `Actions : ${actions.length} (✅ ${reussites} / ❌ ${echecs})\n` +
-    `Gains sale : ${formatMoney(gainsSale)}\n` +
-    `Gains propre : ${formatMoney(gainsPropre)}\n` +
-    (totalVendu > 0 ? `\nVentes (${totalVendu} au total — ${formatMoney(gainsVentes)}) :\n${detailVentes}\n\nQui a vendu quoi :\n${detailVentesParMembre}\n` : "") +
-    `\nClassement :\n${classement || "—"}`;
-
-  await db.ref("semaines/" + id).update({ bloquee: true, closedAt: Date.now(), resume: texte });
-  document.getElementById("resumeWrap").style.display = "block";
-  document.getElementById("resumeText").value = texte;
-
-  const cfgSnap = await db.ref("config/discord_webhook_semaine").once("value");
-  const webhook = cfgSnap.val();
-  if (webhook) {
-    const classementArr = Object.entries(parMembre).sort((a, b) => b[1] - a[1]).map(([prenom, n]) => ({ prenom, n }));
-    const detailVentesArr = Object.entries(parProduit).sort((a, b) => b[1] - a[1]).map(([produit, qte]) => ({ produit, qte }));
-    const detailVentesParMembreArr = Object.entries(parMembreVentes)
-      .sort((a, b) => Object.values(b[1]).reduce((s, n) => s + n, 0) - Object.values(a[1]).reduce((s, n) => s + n, 0))
-      .map(([prenom, produits]) => ({ prenom, produits: Object.entries(produits).map(([produit, qte]) => ({ produit, qte })) }));
-    const resumeObj = { gainsSale, gainsPropre, reussites, echecs, nbActions: actions.length, classementArr, totalVendu, gainsVentes, detailVentesArr, detailVentesParMembreArr };
-
-    try {
-      const blob = await genererBanniereResumeWeb(resumeObj, nom);
-      await envoyerWebhookImage(webhook, blob, "resume.png");
-    } catch (e) {
-      console.error("Échec génération bannière (repli texte) :", e);
-      const fields = [
-        { name: "Actions", value: `${actions.length} (✅ ${reussites} / ❌ ${echecs})`, inline: true },
-        { name: "Gains sale", value: formatMoney(gainsSale), inline: true },
-        { name: "Gains propre", value: formatMoney(gainsPropre), inline: true },
-      ];
-      if (totalVendu > 0) {
-        fields.push({ name: `Ventes (${totalVendu} au total — ${formatMoney(gainsVentes)})`, value: detailVentes || "—" });
-        fields.push({ name: "Qui a vendu quoi", value: detailVentesParMembre || "—" });
-      }
-      fields.push({ name: "Classement", value: classement || "—" });
-      await envoyerWebhookEmbed(webhook, {
-        title: `📋 RÉSUMÉ — ${nom}`,
-        color: VOLTA_COLOR_STEEL,
-        thumbnail: { url: VOLTA_LOGO_URL },
-        fields,
+        document.getElementById('semaine-liste').innerHTML = all.length === 0
+          ? `<tr><td colspan="4" class="empty">Aucune semaine enregistrée.</td></tr>`
+          : all.map(([id, w]) => `
+              <tr>
+                <td>${w.nom}${id === activeId ? ' <span class="badge admin">Active</span>' : ''}</td>
+                <td>${w.debut ? new Date(w.debut).toLocaleDateString('fr-FR') : '—'}</td>
+                <td>${w.fin ? new Date(w.fin).toLocaleDateString('fr-FR') : '—'}</td>
+                <td>${w.bloquee ? '🔒 Bloquée' : '🟢 En cours'}</td>
+              </tr>`).join('');
       });
     }
-    toast("Résumé envoyé sur Discord.");
-  }
+    renderSemaines();
 
-  // Ouvre immédiatement la semaine suivante (7 jours après le verrouillage prévu de celle-ci).
-  await majStatsEtBadges(id);
-  logAudit("Semaine bloquée", nom);
-  const semSnap = await db.ref("semaines/" + id).once("value");
-  const semaineBloquee = { id, ...semSnap.val() };
-  await creerSemaineSuivante(semaineBloquee);
+    document.getElementById('btn-bloquer-semaine').addEventListener('click', async () => {
+      const activeId = (await db.ref('config/semaine_active_id').get()).val();
+      if (!activeId) { toast('Aucune semaine active.'); return; }
+      await db.ref('semaines/' + activeId).update({ bloquee: true, closedAt: new Date().toISOString() });
+      await ensureActiveWeek();
+      toast('Semaine bloquée, nouvelle semaine créée.');
+      renderSemaines();
+    });
 
-  loadTab("semaines");
-  document.getElementById("resumeWrap").style.display = "block";
-  document.getElementById("resumeText").value = texte;
-}
+    // grades du formulaire membre
+    document.getElementById('m-grade').innerHTML = GRADES_DEFAUT
+      .map(g => `<option value="${g.id}">${g.emoji} ${g.nom}</option>`).join('');
 
-/* ===================== MEMBRES ===================== */
-async function tabMembres(body) {
-  const [snapM, snapG, snapR] = await Promise.all([db.ref("membres").once("value"), db.ref("grades").once("value"), db.ref("reset_requests").once("value")]);
-  const membres = entries(snapM.val()).map(([id, m]) => ({ id, ...m }));
-  const grades = entries(snapG.val()).map(([id, g]) => g.nom);
-  const demandes = entries(snapR.val()).map(([id, r]) => ({ id, ...r }));
-  body.innerHTML = `
-    ${demandes.length ? `
-    <div class="panel">
-      <div class="panel-head"><h2>🔔 Demandes de mot de passe oublié (${demandes.length})</h2></div>
-      <table><thead><tr><th>Membre</th><th>Date</th><th></th></tr></thead>
-        <tbody>${demandes.map(r => `
-          <tr><td>${r.prenom} ${r.nom || ""}</td><td class="small muted">${r.date || ""}</td>
-          <td style="white-space:nowrap;">
-            <span class="btn btn-sm btn-gold" onclick="changerPassMembre('${r.membre_id}','${r.prenom}','${r.id}')">🔑 Réinitialiser</span>
-            <span class="btn btn-sm" onclick="ignorerDemande('${r.id}')">Ignorer</span>
-          </td></tr>
-        `).join("")}</tbody></table>
-    </div>` : ""}
-    <div class="panel">
-      <div class="panel-head"><h2>Ajouter un membre</h2></div>
-      <div class="row">
-        <div><label class="l">Prénom</label><input type="text" id="mPrenom"></div>
-        <div><label class="l">Nom</label><input type="text" id="mNom"></div>
-        <div><label class="l">Grade</label><select id="mGrade">${grades.map(g => `<option>${g}</option>`).join("") || '<option value="">Aucun grade — créez-en dans l\'onglet Grades</option>'}</select></div>
-      </div>
-      <div class="row mt8">
-        <div><label class="l">Rôle</label><select id="mRole"><option value="membre">Membre</option><option value="admin">Admin</option></select></div>
-        <div><label class="l">Quota perso (optionnel)</label><input type="number" id="mQuota" value="0"></div>
-        <div><label class="l">Mot de passe</label><input type="text" id="mPass" placeholder="prenom2026"></div>
-      </div>
-      <button class="btn btn-primary mt16" onclick="ajouterMembre()">Ajouter</button>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Membres (${membres.length})</h2></div>
-      <table><thead><tr><th>Prénom</th><th>Nom</th><th>Grade</th><th>Quota</th><th>Rôle</th><th>Actif</th><th>Actions</th></tr></thead>
-        <tbody>${membres.length ? membres.map(m => `
+    // ---- config (taux) ----
+    db.ref('config').on('value', snap => {
+      const cfg = Object.assign({ taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25, blanchiment_taux: 20, taux_branche: 10 }, snap.val() || {});
+      document.getElementById('cfg-percent').value = cfg.taux_action_pct;
+      document.getElementById('cfg-gofast').value = cfg.taux_cambriolage;
+      document.getElementById('cfg-pochon').value = cfg.taux_pochon;
+      document.getElementById('cfg-blanchiment').value = cfg.blanchiment_taux;
+      document.getElementById('cfg-branche').value = cfg.taux_branche;
+    });
+
+    document.getElementById('cfg-save').addEventListener('click', () => {
+      const taux_action_pct = parseFloat(document.getElementById('cfg-percent').value);
+      const taux_cambriolage = parseFloat(document.getElementById('cfg-gofast').value);
+      const taux_pochon = parseFloat(document.getElementById('cfg-pochon').value);
+      const blanchiment_taux = parseFloat(document.getElementById('cfg-blanchiment').value);
+      const taux_branche = parseFloat(document.getElementById('cfg-branche').value);
+      db.ref('config').update({
+        ...(isNaN(taux_action_pct) ? {} : { taux_action_pct }),
+        ...(isNaN(taux_cambriolage) ? {} : { taux_cambriolage }),
+        ...(isNaN(taux_pochon) ? {} : { taux_pochon }),
+        ...(isNaN(blanchiment_taux) ? {} : { blanchiment_taux }),
+        ...(isNaN(taux_branche) ? {} : { taux_branche }),
+      });
+      toast('Taux enregistrés.');
+    });
+
+    // ---- quotas par catégorie ----
+    const QUOTA_FIELDS = {
+      actions: 'q-actions',
+      vente: 'q-vente',
+      labo: 'q-labo',
+      fleeca: 'q-fleeca',
+      armurerie: 'q-armurerie',
+    };
+    db.ref('config/quotas').on('value', snap => {
+      const q = snap.val() || {};
+      Object.entries(QUOTA_FIELDS).forEach(([key, id]) => {
+        document.getElementById(id).value = q[key] || '';
+      });
+    });
+    document.getElementById('q-save').addEventListener('click', () => {
+      const update = {};
+      Object.entries(QUOTA_FIELDS).forEach(([key, id]) => {
+        const v = parseInt(document.getElementById(id).value, 10);
+        update[key] = isNaN(v) ? 0 : v;
+      });
+      db.ref('config/quotas').set(update);
+      toast('Objectifs enregistrés.');
+    });
+
+    // ---- membres ----
+    document.getElementById('form-member').addEventListener('submit', e => {
+      e.preventDefault();
+      const prenom = document.getElementById('m-name').value.trim();
+      const mot_de_passe = document.getElementById('m-pass').value;
+      const grade = document.getElementById('m-grade').value;
+      if (!prenom || !mot_de_passe) return;
+      db.ref('membres/' + uid()).set({ prenom, mot_de_passe, grade, role: 'membre', actif: true });
+      document.getElementById('m-name').value = '';
+      document.getElementById('m-pass').value = '';
+    });
+
+    db.ref('membres').on('value', snap => {
+      const list = entries(snap.val());
+      const el = document.getElementById('member-list');
+      if (list.length === 0) {
+        el.innerHTML = '<div class="empty">Aucun membre pour le moment.</div>';
+        return;
+      }
+      el.innerHTML = list.map(([id, m]) => {
+        const g = gradeInfo(m.grade);
+        return `<div class="member-row">
+          <span class="member-name">${m.prenom} ${m.role === 'admin' ? '<span class="badge admin">Admin</span>' : ''}</span>
+          <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <select class="grade-select" data-id="${id}" title="Change le grade de ce membre">
+              ${GRADES_DEFAUT.map(gr => `<option value="${gr.id}" ${gr.id === m.grade ? 'selected' : ''}>${gr.emoji} ${gr.nom}</option>`).join('')}
+            </select>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);" title="Donne l'accès total au site (page Admin, toutes les permissions ignorées)">
+              <input type="checkbox" class="admin-toggle" data-id="${id}" ${m.role === 'admin' ? 'checked' : ''}> Admin
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);" title="Masque ce membre des classements, du Top 3 et des stats (il reste actif et peut se connecter normalement)">
+              <input type="checkbox" class="invisible-toggle" data-id="${id}" ${m.invisible ? 'checked' : ''}> Invisible
+            </label>
+            <button class="del" data-id="${id}" data-type="membres" title="Supprime définitivement ce membre">✕</button>
+          </span>
+        </div>`;
+      }).join('');
+
+      el.querySelectorAll('.grade-select').forEach(sel => {
+        sel.addEventListener('change', () => db.ref('membres/' + sel.dataset.id).update({ grade: sel.value }));
+      });
+      el.querySelectorAll('.admin-toggle').forEach(chk => {
+        chk.addEventListener('change', () => db.ref('membres/' + chk.dataset.id).update({ role: chk.checked ? 'admin' : 'membre' }));
+      });
+      el.querySelectorAll('.invisible-toggle').forEach(chk => {
+        chk.addEventListener('change', () => db.ref('membres/' + chk.dataset.id).update({ invisible: chk.checked }));
+      });
+    });
+
+    document.body.addEventListener('click', e => {
+      if (e.target.classList.contains('del') && e.target.dataset.type === 'membres') {
+        if (e.target.dataset.id === membre.id) { toast("Tu ne peux pas te supprimer toi-même."); return; }
+        db.ref('membres/' + e.target.dataset.id).remove();
+      }
+    });
+
+    // ---- Stock (création, catégories + produits) ----
+    document.getElementById('form-cat-admin').addEventListener('submit', e => {
+      e.preventDefault();
+      const nom = document.getElementById('ca-nom').value.trim();
+      const emoji = document.getElementById('ca-emoji').value.trim() || '📦';
+      if (!nom) return;
+      db.ref('stock/' + uid()).set({ nom, emoji, produits: {} });
+      document.getElementById('form-cat-admin').reset();
+    });
+
+    db.ref('stock').on('value', snap => {
+      const cats = entries(snap.val());
+      const el = document.getElementById('stockadmin-list');
+      if (cats.length === 0) {
+        el.innerHTML = '<div class="card"><div class="empty">Aucune catégorie pour le moment.</div></div>';
+        return;
+      }
+      el.innerHTML = cats.map(([catId, cat]) => {
+        const produits = entries(cat.produits);
+        return `<div class="card">
+          <h3>${cat.emoji || '📦'} ${cat.nom} <button class="del" data-cat="${catId}" data-type="cat" style="float:right;">✕</button></h3>
+          <table>
+            <thead><tr><th>Produit</th><th>Prix</th><th>Seuil</th><th></th></tr></thead>
+            <tbody>
+              ${produits.length === 0 ? `<tr><td colspan="4" class="empty">Aucun produit.</td></tr>` :
+                produits.map(([pid, p]) => `
+                  <tr>
+                    <td>${p.nom}</td>
+                    <td>${fmtMoney(p.prix)}</td>
+                    <td>${p.seuil || 0}</td>
+                    <td><button class="del" data-cat="${catId}" data-prod="${pid}" data-type="prod">✕</button></td>
+                  </tr>`).join('')}
+            </tbody>
+          </table>
+          <form class="entry form-prod-admin" data-cat="${catId}" style="margin-top:14px;">
+            <div class="field"><label>Nom</label><input type="text" class="np-nom" required></div>
+            <div class="field"><label>Prix</label><input type="number" class="np-prix" min="0" step="1" required></div>
+            <div class="field"><label>Seuil</label><input type="number" class="np-seuil" min="0" step="1" value="5"></div>
+            <button class="submit" type="submit">Ajouter</button>
+          </form>
+        </div>`;
+      }).join('');
+
+      el.querySelectorAll('.form-prod-admin').forEach(form => {
+        form.addEventListener('submit', e => {
+          e.preventDefault();
+          const catId = form.dataset.cat;
+          const nom = form.querySelector('.np-nom').value.trim();
+          const prix = parseFloat(form.querySelector('.np-prix').value);
+          const seuil = parseInt(form.querySelector('.np-seuil').value, 10) || 0;
+          if (!nom || isNaN(prix)) return;
+          db.ref(`stock/${catId}/produits/${uid()}`).set({ nom, prix, seuil, stock: 0 });
+        });
+      });
+    });
+
+    document.body.addEventListener('click', e => {
+      if (e.target.matches('.del[data-type="cat"]')) db.ref('stock/' + e.target.dataset.cat).remove();
+      if (e.target.matches('.del[data-type="prod"]')) db.ref(`stock/${e.target.dataset.cat}/produits/${e.target.dataset.prod}`).remove();
+    });
+
+    // ---- Permissions ----
+    const PERM_PAGES = [
+      { key: 'tracker', label: 'Tracker' },
+      { key: 'stock', label: 'Stock' },
+      { key: 'transactions', label: 'Transactions' },
+      { key: 'blanchiment', label: 'Blanchiment' },
+      { key: 'stats', label: 'Stats' },
+      { key: 'paye', label: 'Paye' },
+      { key: 'taxes', label: 'Taxes' },
+    ];
+
+    function renderPermissions() {
+      db.ref('permissions').get().then(snap => {
+        const perms = snap.val() || {};
+        const head = `<thead><tr><th>Grade</th>${PERM_PAGES.map(p => `<th>${p.label}</th>`).join('')}</tr></thead>`;
+        const body = GRADES_DEFAUT.map(g => `
           <tr>
-            <td><input type="text" value="${m.prenom}" id="mEdPrenom_${m.id}" style="min-width:110px;"></td>
-            <td><input type="text" value="${m.nom || ''}" id="mEdNom_${m.id}" style="min-width:110px;"></td>
-            <td><select id="mEdGrade_${m.id}" style="min-width:130px;">${grades.map(g => `<option ${g === m.grade ? 'selected' : ''}>${g}</option>`).join("")}</select></td>
-            <td><input type="number" value="${Number(m.quota) || 0}" id="mEdQuota_${m.id}" style="max-width:70px;"></td>
-            <td><span class="badge ${m.role === 'admin' ? 'badge-steel' : ''}">${m.role || 'membre'}</span></td>
-            <td><span class="badge ${m.actif !== false ? 'badge-ok' : 'badge-fail'}">${m.actif !== false ? 'Actif' : 'Inactif'}</span></td>
-            <td style="white-space:nowrap;">
-              <span class="btn btn-sm btn-gold" title="Enregistrer (prénom, nom, grade, quota)" onclick="modifierMembre('${m.id}')">💾</span>
-              <span class="btn btn-sm" title="Changer le mot de passe" onclick="changerPassMembre('${m.id}','${m.prenom}')">🔑</span>
-              <span class="btn btn-sm" title="${m.role === 'admin' ? 'Retirer admin' : 'Passer admin'}" onclick="toggleAdmin('${m.id}', ${m.role !== 'admin'})">🛡️</span>
-              <span class="btn btn-sm" title="${m.actif !== false ? 'Désactiver' : 'Activer'}" onclick="toggleActif('${m.id}', ${m.actif === false})">${m.actif !== false ? '⏸️' : '▶️'}</span>
-              ${m.role === 'admin' ? '' : `<span class="btn btn-sm btn-danger" title="Supprimer le membre" onclick="suppMembre('${m.id}')">🗑️</span>`}
-            </td>
-          </tr>
-        `).join("") : '<tr class="empty-row"><td colspan="7">Aucun membre</td></tr>'}</tbody></table>
-    </div>
-  `;
-}
-async function modifierMembre(id) {
-  const prenom = document.getElementById("mEdPrenom_" + id).value.trim();
-  if (!prenom) { toast("Prénom requis.", true); return; }
-  await db.ref("membres/" + id).update({
-    prenom, nom: document.getElementById("mEdNom_" + id).value.trim(),
-    grade: document.getElementById("mEdGrade_" + id).value,
-    quota: Number(document.getElementById("mEdQuota_" + id).value) || 0
-  });
-  logAudit("Membre modifié", prenom);
-  toast("Membre mis à jour.");
-  loadTab("membres");
-}
-async function changerPassMembre(id, prenom, requestId) {
-  const val = window.prompt("Nouveau mot de passe pour " + prenom + " :");
-  if (val === null) return;
-  if (val.trim().length < 4) { toast("Mot de passe trop court.", true); return; }
-  await db.ref("membres/" + id + "/mot_de_passe").set(val.trim());
-  if (requestId) await db.ref("reset_requests/" + requestId).remove();
-  logAudit("Mot de passe changé", "pour " + prenom);
-  toast("Mot de passe mis à jour.");
-  if (requestId) loadTab("membres");
-}
-async function ignorerDemande(reqId) {
-  await db.ref("reset_requests/" + reqId).remove();
-  loadTab("membres");
-}
-async function toggleAdmin(id, makeAdmin) {
-  if (!confirm(makeAdmin ? "Donner le rôle admin à ce membre ?" : "Retirer le rôle admin à ce membre ?")) return;
-  await db.ref("membres/" + id + "/role").set(makeAdmin ? "admin" : "membre");
-  logAudit(makeAdmin ? "Rôle admin donné" : "Rôle admin retiré", "id: " + id);
-  toast("Rôle mis à jour.");
-  loadTab("membres");
-}
-async function ajouterMembre() {
-  const prenom = document.getElementById("mPrenom").value.trim();
-  if (!prenom) { toast("Prénom requis.", true); return; }
-  const pass = document.getElementById("mPass").value.trim() || (prenom.toLowerCase() + "2026");
-  await db.ref("membres/" + uid()).set({
-    prenom, nom: document.getElementById("mNom").value.trim(),
-    grade: document.getElementById("mGrade").value, role: document.getElementById("mRole").value,
-    mot_de_passe: pass, actif: true, quota: Number(document.getElementById("mQuota").value) || 0
-  });
-  logAudit("Membre ajouté", prenom);
-  toast("Membre ajouté.");
-  loadTab("membres");
-}
-async function toggleActif(id, val) { await db.ref("membres/" + id + "/actif").set(val); logAudit(val ? "Membre réactivé" : "Membre désactivé", id); loadTab("membres"); }
-async function suppMembre(id) { if (confirm("Supprimer ce membre ?")) { await db.ref("membres/" + id).remove(); logAudit("Membre supprimé", id); loadTab("membres"); } }
+            <td>${g.emoji} ${g.nom}</td>
+            ${PERM_PAGES.map(p => {
+              const val = (perms[g.id] || {})[p.key];
+              const checked = val !== false; // par défaut visible
+              return `<td style="text-align:center;"><input type="checkbox" class="perm-check" data-grade="${g.id}" data-page="${p.key}" ${checked ? 'checked' : ''}></td>`;
+            }).join('')}
+          </tr>`).join('');
+        document.getElementById('perm-table').innerHTML = head + '<tbody>' + body + '</tbody>';
 
-/* ===================== STOCK ===================== */
-async function tabStock(body) {
-  const snap = await db.ref("stock").once("value");
-  const cats = entries(snap.val()).map(([id, c]) => ({ id, ...c }));
-  body.innerHTML = `
-    <div class="panel">
-      <div class="panel-head"><h2>Nouvelle catégorie</h2></div>
-      <div class="row"><input type="text" id="catEmoji" placeholder="Emoji (ex: 💊)" style="max-width:90px;">
-      <input type="text" id="catNom" placeholder="Nom de la catégorie">
-      <button class="btn btn-primary" onclick="creerCategorie()">Créer</button></div>
-    </div>
-    ${cats.map(c => `
-      <div class="panel">
-        <div class="panel-head"><h2>${c.emoji || "📦"} ${c.nom}</h2>
-          <span class="btn btn-sm btn-danger" onclick="suppCategorie('${c.id}')">Supprimer la catégorie</span></div>
-        <table><thead><tr><th>Produit</th><th>Prix</th><th>Stock</th><th>Seuil</th>${c.nom === "Labo" ? "<th>Recette</th><th>Vend vers</th>" : ""}<th></th></tr></thead>
-          <tbody>${entries(c.produits).length ? entries(c.produits).map(([pid, p]) => `
-            <tr>
-              <td><input type="text" value="${p.nom}" id="edNom_${c.id}_${pid}" style="min-width:140px;"></td>
-              <td><input type="number" value="${p.prix || 0}" id="edPrix_${c.id}_${pid}" style="max-width:90px;"></td>
-              <td><input type="number" value="${p.stock || 0}" id="edStock_${c.id}_${pid}" style="max-width:90px;"></td>
-              <td><input type="number" value="${p.seuil || 0}" id="edSeuil_${c.id}_${pid}" style="max-width:90px;"></td>
-              ${c.nom === "Labo" ? `<td class="small muted">${(p.recipe || []).map(l => `${l.qty}x ${(c.produits[l.ingredientId] || {}).nom || "?"}`).join(", ") || "—"}</td>
-              <td><select id="edVente_${c.id}_${pid}" style="min-width:160px;">
-                <option value="">— Aucun —</option>
-                ${cats.filter(cc => cc.id !== c.id).flatMap(cc => entries(cc.produits).map(([opid, op]) => `<option value="${cc.id}::${opid}" ${p.venteCatId === cc.id && p.venteProdId === opid ? "selected" : ""}>${cc.emoji || ""} ${cc.nom} — ${op.nom}</option>`)).join("")}
-              </select></td>` : ""}
-              <td style="white-space:nowrap;">
-                <span class="btn btn-sm btn-gold" onclick="modifierProduit('${c.id}','${pid}')">Enregistrer</span>
-                <span class="btn btn-sm btn-danger" onclick="suppProduit('${c.id}','${pid}')">Suppr.</span>
-              </td>
-            </tr>
-          `).join("") : `<tr class="empty-row"><td colspan="${c.nom === "Labo" ? 7 : 5}">Aucun produit</td></tr>`}</tbody></table>
-        ${c.nom === "Labo" ? `
-        <div class="panel mt16" style="background:var(--bg-1);">
-          <p class="small muted">Un produit sans recette est un ingrédient brut. Un produit avec recette consomme les ingrédients (× quantité) du stock commun pour produire le résultat. Si ce produit fini doit alimenter un stock vendable (ex: Vente de Drogue), choisis-le en "Produit vendable lié" : chaque production créditera aussi ce stock-là.</p>
-          <div class="row">
-            <div><label class="l">Nom du produit</label><input type="text" id="laboNom" placeholder="ex: Champignon rouge, Black Trip..."></div>
-          </div>
-          <div class="row mt8">
-            <div><label class="l">Ingrédient (optionnel, pour une recette)</label><select id="laboIngredient">${entries(c.produits).map(([pid, p]) => `<option value="${pid}">${p.nom}</option>`).join("") || '<option value="">Aucun produit existant</option>'}</select></div>
-            <div><label class="l">Qté nécessaire</label><input type="number" id="laboQte" value="1" min="1"></div>
-            <div style="display:flex;align-items:flex-end;"><button class="btn" onclick="ajouterLigneRecetteLabo()">Ajouter à la recette</button></div>
-          </div>
-          <div id="laboRecetteEnCours" class="small muted mt8">Aucune ligne de recette en cours.</div>
-          <div class="row mt8">
-            <div><label class="l">Produit vendable lié (optionnel)</label>
-              <select id="laboVenteLien">
-                <option value="">— Aucun (stock Labo uniquement) —</option>
-                ${cats.filter(cc => cc.id !== c.id).flatMap(cc => entries(cc.produits).map(([pid, p]) => `<option value="${cc.id}::${pid}">${cc.emoji || ""} ${cc.nom} — ${p.nom}</option>`)).join("")}
-              </select>
-            </div>
-          </div>
-          <button class="btn btn-gold mt8" onclick="ajouterProduitLabo('${c.id}')">Enregistrer le produit</button>
-        </div>` : `
-        <div class="row mt16">
-          <input type="text" placeholder="Nom du produit" id="pNom_${c.id}">
-          <input type="number" placeholder="Prix" id="pPrix_${c.id}">
-          <input type="number" placeholder="Stock initial" id="pStock_${c.id}">
-          <input type="number" placeholder="Seuil d'alerte" id="pSeuil_${c.id}">
-          <button class="btn btn-gold" onclick="ajouterProduit('${c.id}')">Ajouter produit</button>
-        </div>`}
-      </div>
-    `).join("") || '<p class="muted">Aucune catégorie de stock.</p>'}
-  `;
-}
-let RECETTE_LABO_EN_COURS = [];
-function ajouterLigneRecetteLabo() {
-  const pid = document.getElementById("laboIngredient").value;
-  const qte = Number(document.getElementById("laboQte").value) || 0;
-  if (!pid || qte <= 0) { toast("Choisis un ingrédient et une quantité.", true); return; }
-  const nom = document.getElementById("laboIngredient").selectedOptions[0].textContent;
-  RECETTE_LABO_EN_COURS.push({ ingredientId: pid, qty: qte, nom });
-  document.getElementById("laboRecetteEnCours").textContent = "Recette en cours : " + RECETTE_LABO_EN_COURS.map(l => `${l.qty}x ${l.nom}`).join(", ");
-}
-async function ajouterProduitLabo(catId) {
-  const nom = document.getElementById("laboNom").value.trim();
-  if (!nom) { toast("Nom requis.", true); return; }
-  const lien = document.getElementById("laboVenteLien").value;
-  const data = {
-    nom, prix: 0, stock: 0, seuil: 0,
-    recipe: RECETTE_LABO_EN_COURS.map(l => ({ ingredientId: l.ingredientId, qty: l.qty }))
-  };
-  if (lien) {
-    const [venteCatId, venteProdId] = lien.split("::");
-    data.venteCatId = venteCatId;
-    data.venteProdId = venteProdId;
-  }
-  await db.ref("stock/" + catId + "/produits/" + uid()).set(data);
-  RECETTE_LABO_EN_COURS = [];
-  toast("Produit Labo enregistré.");
-  loadTab("stock");
-}
-async function creerCategorie() {
-  const nom = document.getElementById("catNom").value.trim();
-  if (!nom) { toast("Nom requis.", true); return; }
-  await db.ref("stock/" + uid()).set({ nom, emoji: document.getElementById("catEmoji").value.trim() || "📦", produits: {} });
-  logAudit("Catégorie de stock créée", nom);
-  toast("Catégorie créée.");
-  loadTab("stock");
-}
-async function suppCategorie(id) { if (confirm("Supprimer cette catégorie et tous ses produits ?")) { await db.ref("stock/" + id).remove(); logAudit("Catégorie de stock supprimée", id); loadTab("stock"); } }
-async function ajouterProduit(catId) {
-  const nom = document.getElementById("pNom_" + catId).value.trim();
-  if (!nom) { toast("Nom du produit requis.", true); return; }
-  await db.ref("stock/" + catId + "/produits/" + uid()).set({
-    nom,
-    prix: Number(document.getElementById("pPrix_" + catId).value) || 0,
-    stock: Number(document.getElementById("pStock_" + catId).value) || 0,
-    seuil: Number(document.getElementById("pSeuil_" + catId).value) || 0
-  });
-  logAudit("Produit ajouté", nom);
-  toast("Produit ajouté.");
-  loadTab("stock");
-}
-async function modifierProduit(catId, pid) {
-  const nom = document.getElementById(`edNom_${catId}_${pid}`).value.trim();
-  if (!nom) { toast("Nom requis.", true); return; }
-  const update = {
-    nom,
-    prix: Number(document.getElementById(`edPrix_${catId}_${pid}`).value) || 0,
-    stock: Number(document.getElementById(`edStock_${catId}_${pid}`).value) || 0,
-    seuil: Number(document.getElementById(`edSeuil_${catId}_${pid}`).value) || 0
-  };
-  const selVente = document.getElementById(`edVente_${catId}_${pid}`);
-  if (selVente) {
-    const lien = selVente.value;
-    if (lien) {
-      const [venteCatId, venteProdId] = lien.split("::");
-      update.venteCatId = venteCatId;
-      update.venteProdId = venteProdId;
-    } else {
-      update.venteCatId = null;
-      update.venteProdId = null;
+        document.querySelectorAll('.perm-check').forEach(chk => {
+          chk.addEventListener('change', () => {
+            db.ref(`permissions/${chk.dataset.grade}/${chk.dataset.page}`).set(chk.checked);
+          });
+        });
+      });
     }
+    renderPermissions();
   }
-  await db.ref(`stock/${catId}/produits/${pid}`).update(update);
-  logAudit("Produit modifié", nom);
-  toast("Produit mis à jour.");
-  loadTab("stock");
-}
-async function suppProduit(catId, pid) { if (confirm("Supprimer ce produit ?")) { await db.ref("stock/" + catId + "/produits/" + pid).remove(); logAudit("Produit supprimé", pid); loadTab("stock"); } }
-
-/* ===================== ACTIONS ===================== */
-async function tabActions(body) {
-  const [snapA, snapS] = await Promise.all([db.ref("actions_dispo").once("value"), db.ref("stock").once("value")]);
-  const actions = entries(snapA.val()).map(([id, a]) => ({ id, ...a }));
-  const cats = entries(snapS.val()).map(([id, c]) => ({ id, ...c }));
-  const prodOptions = cats.flatMap(c => entries(c.produits).map(([pid, p]) => `<option value="${c.id}::${pid}">${c.emoji || ""} ${c.nom} — ${p.nom}</option>`)).join("");
-
-  const catOptions = cats.map(c => `<option value="${c.id}">${c.emoji || ""} ${c.nom}</option>`).join("");
-
-  body.innerHTML = `
-    <div class="panel" style="border-color:rgba(212,175,55,.3);">
-      <div class="panel-head"><h2>Import rapide — actions classiques</h2></div>
-      <p class="small muted">Crée en un clic les 5 actions classiques (Vente de Drogue, ATM, Cambu, Plantation, Vente de Branches)
-      avec leurs catégories de stock associées. Tu pourras renommer/ajuster ensuite.</p>
-      <button class="btn btn-gold mt8" onclick="importerActionsClassiques()">Importer les actions classiques</button>
-    </div>
-
-    <div class="panel">
-      <div class="panel-head"><h2>Nouvelle action</h2></div>
-      <div class="row">
-        <input type="text" id="aNom" placeholder="Nom de l'action (ex: Vente, Cambriolage…)">
-        <input type="number" id="aSale" placeholder="$ sale / unité" value="0">
-        <input type="number" id="aPropre" placeholder="$ propre / unité" value="0">
-      </div>
-      <div class="row mt8" id="recipeBuilder">
-        <select id="recipeProd"><option value="">— Produit consommé fixe (optionnel) —</option>${prodOptions}</select>
-        <input type="number" id="recipeQty" placeholder="Qté consommée / unité" value="1">
-        <button class="btn btn-sm" onclick="addRecipeLine()" type="button">+ Ajouter à la recette</button>
-      </div>
-      <div id="recipeLines" class="small muted mt8"></div>
-      <div class="row mt8">
-        <select id="aCatVariable"><option value="">— Ou : produit choisi au moment de l'action (ex: Vente de Drogue) —</option>${catOptions}</select>
-      </div>
-      <div class="row mt8">
-        <label class="small muted" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" id="aProduction" style="width:auto;"> Cette action <b>ajoute</b> du stock au lieu d'en retirer (récolte/production, ex: Récolte de Champignons — au lieu d'une vente)
-        </label>
-      </div>
-      <p class="small muted mt8">Soit une recette fixe (toujours le même produit, ex: ATM → Boîtier de piratage), soit une catégorie « variable » où le membre choisit le produit exact en saisissant l'action (ex: Vente de Drogue → quelle drogue, ou Récolte de Champignons → quel champignon).</p>
-      <button class="btn btn-primary mt16" onclick="creerAction()">Créer l'action</button>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Actions disponibles</h2></div>
-      <table><thead><tr><th>Nom</th><th>$ sale/u</th><th>$ propre/u</th><th>Stock</th><th></th></tr></thead>
-        <tbody>${actions.length ? actions.map(a => {
-          const catVar = a.cat_variable ? cats.find(c => c.id === a.cat_variable) : null;
-          const recetteTxt = (a.recipe || []).map(r => {
-            const cat = cats.find(c => c.id === r.catId);
-            const prod = cat && cat.produits ? cat.produits[r.prodId] : null;
-            return prod ? `${prod.nom} x${r.qty}` : "—";
-          }).join(", ");
-          return `<tr><td>${a.nom}</td><td>${formatMoney(a.montant_sale || 0)}</td><td>${formatMoney(a.montant_propre || 0)}</td>
-          <td class="small">${catVar ? `Produit choisi (${catVar.emoji || ""} ${catVar.nom}) ${a.production ? '<span class="badge badge-ok">+ récolte</span>' : '<span class="badge">- vente</span>'}` : (recetteTxt || "—")}</td>
-          <td><span class="btn btn-sm btn-danger" onclick="suppAction('${a.id}')">Suppr.</span></td></tr>`;
-        }).join("") : '<tr class="empty-row"><td colspan="5">Aucune action définie</td></tr>'}</tbody></table>
-    </div>
-  `;
-}
-
-async function importerActionsClassiques() {
-  if (!confirm("Importer les actions classiques (catégories de stock + 5 actions) ? Les éléments déjà existants avec le même nom ne seront pas dupliqués si tu annules après vérification.")) return;
-
-  const cats = {
-    drogue_cat: { nom: "Drogue", emoji: "💊", produits: {
-      meth: { nom: "Meth", prix: 100, stock: 0, seuil: 5 },
-      coke: { nom: "Coke", prix: 150, stock: 0, seuil: 5 },
-      weed: { nom: "Weed", prix: 80, stock: 0, seuil: 5 }
-    }},
-    materiel_cat: { nom: "Matériel", emoji: "🛠️", produits: {
-      boitier: { nom: "Boîtier de piratage", prix: 0, stock: 0, seuil: 2 },
-      crochetage: { nom: "Outil de crochetage", prix: 0, stock: 0, seuil: 2 }
-    }},
-    plantation_cat: { nom: "Plantation", emoji: "🌱", produits: {
-      eau: { nom: "Eau", prix: 0, stock: 0, seuil: 5 },
-      fertilisant: { nom: "Fertilisant", prix: 0, stock: 0, seuil: 5 },
-      graine: { nom: "Graine", prix: 0, stock: 0, seuil: 5 },
-      pot: { nom: "Pot", prix: 0, stock: 0, seuil: 5 }
-    }},
-    branches_cat: { nom: "Branches", emoji: "🌿", produits: {
-      branche: { nom: "Branche de cannabis", prix: 0, stock: 0, seuil: 5 }
-    }}
-  };
-  for (const [catId, cat] of Object.entries(cats)) {
-    await db.ref("stock/" + catId).update(cat);
-  }
-
-  await db.ref("actions_dispo").update({
-    vente_drogue: { nom: "Vente de Drogue", montant_sale: 0, montant_propre: 0, recipe: [], cat_variable: "drogue_cat" },
-    atm: { nom: "ATM", montant_sale: 0, montant_propre: 0, recipe: [{ catId: "materiel_cat", prodId: "boitier", qty: 1 }] },
-    cambu: { nom: "Cambu", montant_sale: 0, montant_propre: 0, recipe: [{ catId: "materiel_cat", prodId: "crochetage", qty: 1 }] },
-    plantation: { nom: "Plantation", montant_sale: 0, montant_propre: 0, recipe: [
-      { catId: "plantation_cat", prodId: "eau", qty: 1 }, { catId: "plantation_cat", prodId: "fertilisant", qty: 1 },
-      { catId: "plantation_cat", prodId: "graine", qty: 1 }, { catId: "plantation_cat", prodId: "pot", qty: 1 }
-    ]},
-    vente_branches: { nom: "Vente de Branches", montant_sale: 0, montant_propre: 0, recipe: [{ catId: "branches_cat", prodId: "branche", qty: 1 }] }
-  });
-
-  toast("Actions importées — ajuste les prix/stocks dans Admin → Stock.");
-  loadTab("actions");
-}
-let RECIPE_LINES = [];
-function addRecipeLine() {
-  const val = document.getElementById("recipeProd").value;
-  const qty = Number(document.getElementById("recipeQty").value) || 0;
-  if (!val || qty <= 0) { toast("Sélectionne un produit et une quantité.", true); return; }
-  const [catId, prodId] = val.split("::");
-  RECIPE_LINES.push({ catId, prodId, qty });
-  document.getElementById("recipeLines").textContent = "Recette : " + RECIPE_LINES.length + " ligne(s) ajoutée(s) — sera enregistrée à la création.";
-}
-async function creerAction() {
-  const nom = document.getElementById("aNom").value.trim();
-  if (!nom) { toast("Nom requis.", true); return; }
-  await db.ref("actions_dispo/" + uid()).set({
-    nom, montant_sale: Number(document.getElementById("aSale").value) || 0,
-    montant_propre: Number(document.getElementById("aPropre").value) || 0,
-    recipe: RECIPE_LINES,
-    cat_variable: document.getElementById("aCatVariable").value || null,
-    production: document.getElementById("aProduction").checked
-  });
-  RECIPE_LINES = [];
-  logAudit("Action créée", nom);
-  toast("Action créée.");
-  loadTab("actions");
-}
-async function suppAction(id) { if (confirm("Supprimer cette action ?")) { await db.ref("actions_dispo/" + id).remove(); logAudit("Action supprimée", id); loadTab("actions"); } }
-
-/* ===================== QUOTAS ===================== */
-async function getActiveWeekAdmin() {
-  const snap = await db.ref("semaines").once("value");
-  const list = entries(snap.val()).map(([id, s]) => ({ id, ...s }));
-  list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  return list.find(s => s.bloquee !== true) || list[0] || null;
-}
-function barreAdmin(pct) {
-  return `<div style="background:var(--bg-2); border-radius:6px; height:8px; overflow:hidden; min-width:90px;">
-    <div style="height:100%; width:${Math.min(100, pct)}%; background:${pct >= 100 ? 'var(--success)' : 'var(--steel)'};"></div></div>`;
-}
-async function tabQuotas(body) {
-  const week = await getActiveWeekAdmin();
-  const [snapM, snapAc, snapAcDispo, snapS, snapQC, snapG] = await Promise.all([
-    db.ref("membres").once("value"),
-    week ? db.ref("actions/" + week.id).once("value") : Promise.resolve({ val: () => null }),
-    db.ref("actions_dispo").once("value"),
-    db.ref("stock").once("value"),
-    db.ref("quotas_categorie").once("value"),
-    db.ref("visibilite_grades").once("value")
-  ]);
-  const visi = snapG.val() || {};
-  const gradesMasques = new Set(Object.keys(visi).filter(g => visi[g] && visi[g].quotas === false));
-  const membres = entries(snapM.val()).map(([id, m]) => ({ id, ...m })).filter(m => m.actif !== false && !gradesMasques.has(m.grade));
-  const actions = entries(snapAc.val()).map(([id, a]) => a);
-  const actionsDispo = snapAcDispo.val() || {};
-  const stock = snapS.val() || {};
-  const quotasCategorie = snapQC.val() || {};
-
-  body.innerHTML = `
-    <div class="panel">
-      <div class="panel-head"><h2>Quota global (nb d'actions / semaine)</h2></div>
-      <table><thead><tr><th>Membre</th><th>Quota</th><th>Réalisé</th><th>Progression</th></tr></thead>
-        <tbody>${membres.length ? membres.map(m => {
-          const fait = actions.filter(a => a.membre_id === m.id && a.resultat === "Réussite" && !a.produit_drogue_id).reduce((acc, a) => acc + Number(a.quantite || 0), 0);
-          const quota = Number(m.quota) || 0;
-          const pct = quota > 0 ? Math.round(fait / quota * 100) : 0;
-          return `<tr><td>${m.prenom} ${m.nom || ""}</td>
-            <td><input type="number" value="${quota}" style="max-width:90px" onchange="majQuotaAdmin('${m.id}', this.value)"></td>
-            <td>${fait}</td><td>${barreAdmin(pct)}</td></tr>`;
-        }).join("") : '<tr class="empty-row"><td colspan="4">Aucun membre</td></tr>'}</tbody></table>
-    </div>
-    <div id="quotasProduitsAdminWrap"></div>
-  `;
-
-  // une seule cible par catégorie "produit variable" (ex: Drogue), peu importe le produit exact vendu
-  const catIds = [...new Set(Object.values(actionsDispo).map(a => a.cat_variable).filter(Boolean))];
-  const wrap = document.getElementById("quotasProduitsAdminWrap");
-  if (!catIds.length) {
-    wrap.innerHTML = '<div class="panel"><p class="muted small">Aucune action avec produit variable (ex: Vente de Drogue) n\'est configurée dans l\'onglet Actions.</p></div>';
-    return;
-  }
-  wrap.innerHTML = catIds.map(catId => {
-    const cat = stock[catId];
-    if (!cat) return "";
-    const produitIds = new Set(Object.keys(cat.produits || {}));
-    return `<div class="panel">
-      <div class="panel-head"><h2>${cat.emoji || ""} Quota global ${cat.nom} (toutes confondues)</h2></div>
-      <table><thead><tr><th>Membre</th><th>Quota</th><th>Réalisé</th><th>Progression</th></tr></thead>
-        <tbody>${membres.map(m => {
-          const quota = Number((quotasCategorie[m.id] || {})[catId]) || 0;
-          const fait = actions.filter(a => a.membre_id === m.id && produitIds.has(a.produit_drogue_id) && a.resultat === "Réussite")
-            .reduce((acc, a) => acc + Number(a.quantite || 0), 0);
-          const pct = quota > 0 ? Math.round(fait / quota * 100) : 0;
-          return `<tr><td>${m.prenom}</td>
-            <td><input type="number" value="${quota}" style="max-width:90px" onchange="majQuotaCategorieAdmin('${m.id}','${catId}', this.value)"></td>
-            <td>${fait}</td><td>${barreAdmin(pct)}</td></tr>`;
-        }).join("")}</tbody></table>
-    </div>`;
-  }).join("");
-}
-async function majQuotaAdmin(id, val) {
-  await db.ref("membres/" + id + "/quota").set(Number(val) || 0);
-  toast("Quota mis à jour.");
-}
-async function majQuotaCategorieAdmin(membreId, catId, val) {
-  await db.ref(`quotas_categorie/${membreId}/${catId}`).set(Number(val) || 0);
-  toast("Quota mis à jour.");
-}
-
-/* ===================== GRADES ===================== */
-async function tabGrades(body) {
-  const snap = await db.ref("grades").once("value");
-  const grades = entries(snap.val()).map(([id, g]) => ({ id, ...g })).sort((a, b) => (a.ordre || 99) - (b.ordre || 99));
-  body.innerHTML = `
-    <div class="panel">
-      <div class="panel-head"><h2>Nouveau grade</h2></div>
-      <div class="row"><input type="text" id="gNom" placeholder="Nom du grade">
-      <input type="number" id="gOrdre" placeholder="Ordre hiérarchique (1 = le plus haut)">
-      <button class="btn btn-primary" onclick="creerGrade()">Créer</button></div>
-      <p class="small muted mt8">La visibilité de chaque grade dans Quotas / Stats / Paye / Tracker / Labo se configure dans l'onglet "Visibilité".</p>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Grades</h2></div>
-      <table><thead><tr><th>Ordre</th><th>Nom</th><th></th></tr></thead>
-        <tbody>${grades.length ? grades.map(g => `
-          <tr><td>${g.ordre || "-"}</td><td>${g.nom}</td>
-          <td>${g.nom === 'Fondateur' ? '<span class="small muted">protégé</span>' : `<span class="btn btn-sm btn-danger" onclick="suppGrade('${g.id}')">Suppr.</span>`}</td></tr>
-        `).join("") : '<tr class="empty-row"><td colspan="3">Aucun grade</td></tr>'}</tbody></table>
-    </div>
-  `;
-}
-async function creerGrade() {
-  const nom = document.getElementById("gNom").value.trim();
-  if (!nom) { toast("Nom requis.", true); return; }
-  await db.ref("grades/" + uid()).set({ nom, ordre: Number(document.getElementById("gOrdre").value) || 9 });
-  logAudit("Grade créé", nom);
-  toast("Grade créé.");
-  loadTab("grades");
-}
-async function suppGrade(id) { if (confirm("Supprimer ce grade ?")) { await db.ref("grades/" + id).remove(); logAudit("Grade supprimé", id); loadTab("grades"); } }
-
-/* ===================== VISIBILITÉ (grade × page de suivi) ===================== */
-const VISIBILITE_PAGES = [
-  { page: "quotas",  label: "Quotas" },
-  { page: "stats",   label: "Stats" },
-  { page: "paye",    label: "Paye" },
-  { page: "tracker", label: "Tracker" },
-  { page: "labo",    label: "Labo" }
-];
-async function tabVisibilite(body) {
-  const [snapG, snapV] = await Promise.all([db.ref("grades").once("value"), db.ref("visibilite_grades").once("value")]);
-  const grades = entries(snapG.val()).map(([id, g]) => g.nom);
-  const visi = snapV.val() || {};
-  body.innerHTML = `
-    <div class="panel">
-      <div class="panel-head"><h2>Visibilité par grade</h2></div>
-      <p class="small muted">Coche les pages où les membres de ce grade doivent apparaître (membre listé, comptabilisé). Décoche pour un grade invité qui n'a pas besoin d'être suivi sur cette page. Tout est coché par défaut.</p>
-      <table>
-        <thead><tr><th>Grade</th>${VISIBILITE_PAGES.map(p => `<th>${p.label}</th>`).join("")}</tr></thead>
-        <tbody>
-          ${grades.map(g => `<tr><td>${g}</td>${VISIBILITE_PAGES.map(p =>
-            `<td style="text-align:center;"><input type="checkbox" id="visi_${g}_${p.page}" ${(!visi[g] || visi[g][p.page] !== false) ? "checked" : ""}></td>`
-          ).join("")}</tr>`).join("")}
-        </tbody>
-      </table>
-      ${grades.length === 0 ? '<p class="muted mt16">Crée d\'abord des grades dans l\'onglet Grades.</p>' :
-      '<button class="btn btn-primary mt16" onclick="enregistrerVisibilite()">Enregistrer la visibilité</button>'}
-    </div>
-  `;
-  window._visiGrades = grades;
-}
-async function enregistrerVisibilite() {
-  const grades = window._visiGrades || [];
-  const update = {};
-  grades.forEach(g => { update[g] = {}; VISIBILITE_PAGES.forEach(p => { update[g][p.page] = document.getElementById(`visi_${g}_${p.page}`).checked; }); });
-  await db.ref("visibilite_grades").update(update);
-  logAudit("Visibilité modifiée");
-  toast("Visibilité enregistrée.");
-}
-
-/* ===================== PERMISSIONS ===================== */
-async function tabPermissions(body) {
-  const [snapG, snapP] = await Promise.all([db.ref("grades").once("value"), db.ref("permissions").once("value")]);
-  const grades = entries(snapG.val()).map(([id, g]) => g.nom).filter(n => n !== "Fondateur");
-  const perms = snapP.val() || {};
-  body.innerHTML = `
-    <div class="panel">
-      <div class="panel-head"><h2>Permissions par grade</h2></div>
-      <p class="small muted">Le Fondateur a toujours accès à tout. Coche les pages accessibles pour chaque autre grade, puis enregistre.</p>
-      <table>
-        <thead><tr><th>Page</th>${grades.map(g => `<th>${g}</th>`).join("")}</tr></thead>
-        <tbody>
-          ${PAGES_DISPO.map(p => `<tr><td>${p.label}</td>${grades.map(g =>
-            `<td style="text-align:center;"><input type="checkbox" id="perm_${g}_${p.page}" ${(perms[g] && perms[g][p.page]) ? "checked" : ""}></td>`
-          ).join("")}</tr>`).join("")}
-        </tbody>
-      </table>
-      ${grades.length === 0 ? '<p class="muted mt16">Crée d\'abord des grades dans l\'onglet Grades.</p>' :
-      '<button class="btn btn-primary mt16" onclick="enregistrerPermissions()">Enregistrer les permissions</button>'}
-    </div>
-  `;
-  window._permGrades = grades;
-}
-async function enregistrerPermissions() {
-  const grades = window._permGrades || [];
-  const update = {};
-  grades.forEach(g => { update[g] = {}; PAGES_DISPO.forEach(p => { update[g][p.page] = document.getElementById(`perm_${g}_${p.page}`).checked; }); });
-  await db.ref("permissions").update(update);
-  _permsCache = null;
-  logAudit("Permissions modifiées");
-  toast("Permissions enregistrées.");
-}
-
-/* ===================== CONFIG ===================== */
-async function tabConfig(body) {
-  const [snapCfg, snapEv, snapG] = await Promise.all([db.ref("config").once("value"), db.ref("events_drogue").once("value"), db.ref("grades").once("value")]);
-  const cfg = snapCfg.val() || {};
-  const events = entries(snapEv.val()).map(([id, e]) => ({ id, ...e })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  const grades = entries(snapG.val()).map(([id, g]) => g.nom).sort();
-  const tauxGrades = cfg.taux_paye_grades || {};
-  body.innerHTML = `
-    <div class="panel">
-      <div class="panel-head"><h2>Paramètres généraux</h2></div>
-      <div class="row">
-        <div><label class="l">Taux de frais blanchiment (%)</label><input type="number" id="cfgTaux" value="${cfg.blanchiment_taux ?? 35}"></div>
-        <div><label class="l">Webhook Discord — résumé de semaine (optionnel)</label><input type="text" id="cfgWebhook" value="${cfg.discord_webhook_semaine || ''}" placeholder="https://discord.com/api/webhooks/..."></div>
-      </div>
-      <div class="row mt8">
-        <div><label class="l">Webhook Discord — quotas atteints &amp; badges (optionnel)</label><input type="text" id="cfgWebhookQuota" value="${cfg.discord_webhook_quota || ''}" placeholder="https://discord.com/api/webhooks/..."></div>
-      </div>
-      <div class="row mt8">
-        <div><label class="l">Taux de paye par défaut — Vente de Drogue (%)</label><input type="number" id="cfgTauxPayeDrogue" value="${cfg.taux_paye_drogue ?? 20}"></div>
-        <div><label class="l">Taux de paye par défaut — Autres actions (%)</label><input type="number" id="cfgTauxPayeAutres" value="${cfg.taux_paye_autres ?? 45}"></div>
-      </div>
-      <button class="btn btn-primary mt16" onclick="saveConfig()">Enregistrer</button>
-    </div>
-
-    <div class="panel mt16">
-      <div class="panel-head"><h2>Taux de paye par rôle (grade)</h2></div>
-      <p class="small muted">Laisse vide pour utiliser le taux par défaut ci-dessus.</p>
-      <table><thead><tr><th>Grade</th><th>Drogue (%)</th><th>Autres actions (%)</th></tr></thead>
-        <tbody>${grades.length ? grades.map(g => `
-          <tr><td>${g}</td>
-            <td><input type="number" id="cfgGradeDrogue_${g}" value="${tauxGrades[g] && tauxGrades[g].drogue != null ? tauxGrades[g].drogue : ''}" style="max-width:100px" placeholder="${cfg.taux_paye_drogue ?? 20}"></td>
-            <td><input type="number" id="cfgGradeAutres_${g}" value="${tauxGrades[g] && tauxGrades[g].autres != null ? tauxGrades[g].autres : ''}" style="max-width:100px" placeholder="${cfg.taux_paye_autres ?? 45}"></td>
-          </tr>`).join("") : '<tr class="empty-row"><td colspan="3">Aucun grade — crée-en dans l\'onglet Grades</td></tr>'}</tbody>
-      </table>
-      ${grades.length ? '<button class="btn btn-primary mt16" onclick="saveTauxGrades()">Enregistrer les taux par grade</button>' : ''}
-    </div>
-    <div id="_gradesListForConfig" style="display:none;">${grades.join("||")}</div>
-
-    <div class="panel mt16">
-      <div class="panel-head"><h2>🎯 Events — Taux spéciaux</h2></div>
-      <p class="small muted">Pendant la fenêtre définie, les taux de paye sont remplacés. Laisse à 0 pour ne pas modifier un taux.</p>
-      <div class="row mt8">
-        <div><label class="l">Début</label><input type="datetime-local" id="evDebut"></div>
-        <div><label class="l">Fin</label><input type="datetime-local" id="evFin"></div>
-        <div><label class="l">Taux drogue (%)</label><input type="number" id="evTauxDrogue" value="35" style="max-width:100px;"></div>
-        <div><label class="l">Taux actions (%)</label><input type="number" id="evTauxActions" value="0" style="max-width:100px;"></div>
-        <div><label class="l">Nom (optionnel)</label><input type="text" id="evNom" placeholder="Ex: Event nuit"></div>
-        <div style="display:flex;align-items:flex-end;"><button class="btn btn-gold" onclick="creerEvent()">Créer</button></div>
-      </div>
-      <table class="mt16"><thead><tr><th>Nom</th><th>Début</th><th>Fin</th><th>Taux drogue</th><th>Taux actions</th><th></th></tr></thead>
-        <tbody>${events.length ? events.map(e => `
-          <tr><td>${e.nom || "—"}</td><td>${new Date(e.debut).toLocaleString("fr-FR")}</td><td>${new Date(e.fin).toLocaleString("fr-FR")}</td>
-          <td>${e.taux || 0}%</td><td>${e.taux_actions || 0}%</td>
-          <td><span class="btn btn-sm btn-danger" onclick="supprimerEvent('${e.id}')">Suppr.</span></td></tr>
-        `).join("") : '<tr class="empty-row"><td colspan="6">Aucun event</td></tr>'}</tbody>
-      </table>
-    </div>
-  `;
-}
-async function saveTauxGrades() {
-  const grades = document.getElementById("_gradesListForConfig").textContent.split("||").filter(Boolean);
-  const update = {};
-  grades.forEach(g => {
-    const d = document.getElementById("cfgGradeDrogue_" + g).value;
-    const a = document.getElementById("cfgGradeAutres_" + g).value;
-    update[g] = {};
-    if (d !== "") update[g].drogue = Number(d);
-    if (a !== "") update[g].autres = Number(a);
-  });
-  await db.ref("config/taux_paye_grades").set(update);
-  logAudit("Taux de paye par grade modifiés");
-  toast("Taux par grade enregistrés.");
-}
-async function creerEvent() {
-  const debut = document.getElementById("evDebut").value;
-  const fin = document.getElementById("evFin").value;
-  const taux = Number(document.getElementById("evTauxDrogue").value) || 0;
-  const taux_actions = Number(document.getElementById("evTauxActions").value) || 0;
-  const nom = document.getElementById("evNom").value.trim();
-  if (!debut || !fin) { toast("Remplis début et fin.", true); return; }
-  if (new Date(fin) <= new Date(debut)) { toast("La fin doit être après le début.", true); return; }
-  await db.ref("events_drogue/" + uid()).set({ debut: new Date(debut).getTime(), fin: new Date(fin).getTime(), taux, taux_actions, nom, createdAt: Date.now() });
-  logAudit("Event créé", nom || "sans nom");
-  toast("Event créé.");
-  loadTab("config");
-}
-async function supprimerEvent(id) {
-  await db.ref("events_drogue/" + id).remove();
-  logAudit("Event supprimé", id);
-  loadTab("config");
-}
-async function saveConfig() {
-  await db.ref("config").update({
-    blanchiment_taux: Number(document.getElementById("cfgTaux").value) || 35,
-    taux_paye_drogue: Number(document.getElementById("cfgTauxPayeDrogue").value) || 0,
-    taux_paye_autres: Number(document.getElementById("cfgTauxPayeAutres").value) || 0,
-    discord_webhook_semaine: document.getElementById("cfgWebhook").value.trim(),
-    discord_webhook_quota: document.getElementById("cfgWebhookQuota").value.trim()
-  });
-  logAudit("Config modifiée", "Paramètres généraux / webhooks");
-  toast("Configuration enregistrée.");
-}
-
-/* ===================== AUDIT ===================== */
-async function tabAudit(body) {
-  const snap = await db.ref("audit").limitToLast(200).once("value");
-  const list = entries(snap.val()).map(([id, a]) => ({ id, ...a })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  body.innerHTML = `
-    <div class="panel">
-      <div class="panel-head"><h2>Journal d'audit — 200 dernières actions</h2></div>
-      <p class="small muted">Trace qui a créé, modifié ou supprimé quoi (membres, semaines, stock, actions, config, permissions...). Les modifications de produits/quotas très fréquentes ne sont pas toutes détaillées pour rester lisible.</p>
-      <table><thead><tr><th>Date</th><th>Membre</th><th>Action</th><th>Détail</th></tr></thead>
-        <tbody>${list.length ? list.map(a => `
-          <tr><td class="small muted" style="white-space:nowrap;">${a.createdAt ? new Date(a.createdAt).toLocaleString('fr-FR') : '-'}</td>
-          <td>${a.membre || '?'}</td><td>${a.action}</td><td class="small muted">${a.details || ''}</td></tr>
-        `).join("") : '<tr class="empty-row"><td colspan="4">Aucune entrée pour le moment.</td></tr>'}</tbody></table>
-    </div>
-  `;
-}
-
-(async function () {
-  await authReady;
-  SESSION = await initShell("admin", "Admin");
-  if (!SESSION) return;
-  renderContent();
-})();
 </script>
 </body>
 </html>

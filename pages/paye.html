@@ -3,202 +3,144 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Paye — The Roolio Family</title>
+<title>Les Mugiwara — Paye</title>
 <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-<div id="shell"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Paye</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="note-hint" style="margin-bottom:16px;">Paye en argent sale uniquement — réservé aux grades Sergent et plus. Une semaine bloquée reste payable : choisis-la ci-dessous.</div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="../js/firebase-config.js"></script>
-<script src="../js/app.js"></script>
-<script>
-let SESSION, SEMAINES = [], SEMAINE_SEL = null, TAUX_DROGUE = 20, TAUX_AUTRES = 45, TAUX_BLANCHIMENT = 35;
-let RAW = { membres: {}, actions: {}, actionsDispo: {}, payes: {}, argentSale: {}, argentPropre: {}, visi: {}, events: {}, tauxGrades: {} };
-let CUR_WEEK_ID = null, ACTIONS_REF = null, PAYES_REF = null;
-
-function renderContent() {
-  document.getElementById("content").innerHTML = `
-    <h1>Paye</h1>
-    <div class="sigil-rule"></div>
-    <p class="muted small">Montant suggéré = (gains Vente de Drogue × ${TAUX_DROGUE}%) + (gains action × ${TAUX_AUTRES}%). En "Propre", -${TAUX_BLANCHIMENT}% de blanchiment est appliqué automatiquement. Taux modifiables dans Admin → Config.</p>
-
-    <div class="panel mt16">
-      <div class="row" style="align-items:flex-end;">
-        <div><label class="l">Semaine</label><select id="selSemaine" onchange="onSemaineChange()"></select></div>
-        <div><div class="small muted">Solde propre disponible</div><div class="stat-num gold" id="soldePropreDisp" style="font-size:20px;">0 $</div></div>
-        <div><div class="small muted">Total payé cette semaine</div><div class="stat-num" id="totalPayeDisp" style="font-size:20px;">0 $</div></div>
+    <div class="card">
+      <div class="field" style="max-width:340px;">
+        <label>Semaine</label>
+        <select id="p-semaine"></select>
       </div>
     </div>
 
-    <div class="panel">
+    <div class="card">
+      <h3>À payer</h3>
       <table>
-        <thead><tr><th>Membre</th><th>Gains Drogue</th><th>Gains action</th><th>Total généré</th><th>Montant à payer</th><th>Argent</th><th></th></tr></thead>
-        <tbody id="tblPaye"><tr class="empty-row"><td colspan="7">Chargement…</td></tr></tbody></table>
+        <thead><tr><th>Membre</th><th>Gains (semaine)</th><th>Déjà payé (semaine)</th><th>Reste à payer</th><th></th></tr></thead>
+        <tbody id="paye-body"></tbody>
+      </table>
     </div>
-  `;
-}
 
-function renderSemainesSelect() {
-  SEMAINES = entries(RAW.semaines).map(([id, s]) => ({ id, ...s })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  const sel = document.getElementById("selSemaine");
-  sel.innerHTML = SEMAINES.map(s => `<option value="${s.id}">${s.nom}${s.bloquee ? " (bloquée)" : " (active)"}</option>`).join("");
-  if (!SEMAINE_SEL || !SEMAINES.find(s => s.id === SEMAINE_SEL.id)) {
-    SEMAINE_SEL = SEMAINES.find(s => s.bloquee) || SEMAINES[0] || null;
-  } else {
-    SEMAINE_SEL = SEMAINES.find(s => s.id === SEMAINE_SEL.id);
-  }
-  if (SEMAINE_SEL) sel.value = SEMAINE_SEL.id;
-  subscribeSemaine();
-}
+    <div class="card">
+      <h3>Historique des paiements</h3>
+      <table>
+        <thead><tr><th>Membre</th><th>Semaine</th><th>Montant</th><th>Par</th><th>Date</th></tr></thead>
+        <tbody id="hist-body"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
 
-function subscribeSemaine() {
-  const newId = SEMAINE_SEL ? SEMAINE_SEL.id : null;
-  if (newId === CUR_WEEK_ID) { renderPaye(); return; }
-  if (ACTIONS_REF) ACTIONS_REF.off("value");
-  if (PAYES_REF) PAYES_REF.off("value");
-  CUR_WEEK_ID = newId;
-  RAW.actions = {}; RAW.payes = {};
-  if (CUR_WEEK_ID) {
-    ACTIONS_REF = db.ref("actions/" + CUR_WEEK_ID);
-    ACTIONS_REF.on("value", snap => { RAW.actions = snap.val() || {}; renderPaye(); });
-    PAYES_REF = db.ref("payes/" + CUR_WEEK_ID);
-    PAYES_REF.on("value", snap => { RAW.payes = snap.val() || {}; renderPaye(); });
-  } else {
-    ACTIONS_REF = null; PAYES_REF = null;
-    renderPaye();
-  }
-}
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('paye', 'Paye');
+  if (membre) {
+    let membresMap = {};
+    let semainesMap = {};
+    let semaineSelectionnee = ''; // '' = toutes les semaines
 
-function onSemaineChange() {
-  const id = document.getElementById("selSemaine").value;
-  SEMAINE_SEL = SEMAINES.find(s => s.id === id);
-  subscribeSemaine();
-}
+    function nomSemaine(id) {
+      if (!id) return 'Toutes les semaines';
+      const s = semainesMap[id];
+      return s ? s.nom : 'Semaine supprimée';
+    }
 
-function renderPaye() {
-  if (!SEMAINE_SEL) { document.getElementById("tblPaye").innerHTML = '<tr class="empty-row"><td colspan="7">Aucune semaine</td></tr>'; return; }
-  const isAdmin = SESSION.role === "admin";
+    async function chargerSemaines() {
+      const [allSnap, activeSnap] = await Promise.all([
+        db.ref('semaines').get(),
+        db.ref('config/semaine_active_id').get()
+      ]);
+      const all = entries(allSnap.val()).sort((a, b) => (b[1].debut || '').localeCompare(a[1].debut || ''));
+      semainesMap = Object.fromEntries(all);
+      const activeId = activeSnap.val();
 
-  const tauxGrades = RAW.tauxGrades;
-  const visi = RAW.visi;
-  const gradesMasques = new Set(Object.keys(visi).filter(g => visi[g] && visi[g].paye === false));
-  const membres = entries(RAW.membres).map(([id, m]) => ({ id, ...m })).filter(m => m.actif !== false && !gradesMasques.has(m.grade));
-  const actions = entries(RAW.actions).map(([id, a]) => a);
-  const actionsDispo = RAW.actionsDispo;
-  const payes = RAW.payes;
-  const events = entries(RAW.events).map(([id, e]) => e);
+      const sel = document.getElementById('p-semaine');
+      sel.innerHTML = '<option value="">— Toutes les semaines —</option>' +
+        all.map(([id, s]) => `<option value="${id}">${s.nom}${s.bloquee ? ' 🔒' : ' 🟢'}${id === activeId ? ' (active)' : ''}</option>`).join('');
+      sel.value = activeId || '';
+      semaineSelectionnee = sel.value;
 
-  function tauxDrogueForAction(a) {
-    const ts = a.createdAt || 0;
-    const ev = events.find(e => ts >= e.debut && ts <= e.fin);
-    if (ev && ev.taux) return ev.taux;
-    const g = tauxGrades[a.grade_membre];
-    if (g && g.drogue != null) return g.drogue;
-    return TAUX_DROGUE;
-  }
-  function tauxActionsForAction(a) {
-    const ts = a.createdAt || 0;
-    const ev = events.find(e => ts >= e.debut && ts <= e.fin);
-    if (ev && ev.taux_actions) return ev.taux_actions;
-    const g = tauxGrades[a.grade_membre];
-    if (g && g.autres != null) return g.autres;
-    return TAUX_AUTRES;
-  }
+      sel.addEventListener('change', () => {
+        semaineSelectionnee = sel.value;
+        refresh();
+      });
+    }
 
-  const calcSolde = v => entries(v).reduce((acc, [, l]) => acc + (l.type === "Sortie" ? -Number(l.montant || 0) : Number(l.montant || 0)), 0);
-  document.getElementById("soldePropreDisp").textContent = formatMoney(calcSolde(RAW.argentPropre));
+    function refresh() {
+      Promise.all([db.ref('membres').get(), computeGainsSemaine(semaineSelectionnee || null)]).then(([mSnap, data]) => {
+        membresMap = Object.fromEntries(entries(mSnap.val()));
+        const { gainsParMembre, payeParMembre, aPayerParMembre } = data;
 
-  function partGains(membreId, a) {
-    const totalPersonnes = 1 + (a.participants_ids ? a.participants_ids.length : 0);
-    return Number(a.gains_totaux || 0) / totalPersonnes;
-  }
+        const rows = Object.entries(membresMap).filter(([id]) => (gainsParMembre[id] || 0) > 0).map(([id, m]) => {
+          const g = gradeInfo(m.grade);
+          const total = gainsParMembre[id] || 0;
+          const deja = payeParMembre[id] || 0;
+          const reste = aPayerParMembre[id] || 0;
+          const peutPayer = canManage(membre) && reste > 0 && semaineSelectionnee !== '';
+          return `<tr>
+            <td>${g.emoji} ${m.prenom}</td>
+            <td>${fmtMoney(total)}</td>
+            <td>${fmtMoney(deja)}</td>
+            <td class="amt">${fmtMoney(reste)}</td>
+            <td>${peutPayer ? `<button class="submit" data-id="${id}" data-montant="${reste}" style="padding:6px 14px;font-size:13px;">Payer</button>` : ''}</td>
+          </tr>`;
+        }).join('');
+        document.getElementById('paye-body').innerHTML = rows || `<tr><td colspan="5" class="empty">Aucun gain enregistré pour cette période.</td></tr>`;
 
-  let totalPaye = 0;
-  document.getElementById("tblPaye").innerHTML = membres.length ? membres.map(m => {
-    const mesActions = actions.filter(a => a.resultat === "Réussite" && (a.membre_id === m.id || (a.participants_ids && a.participants_ids.includes(m.id))));
-    const actionsDrogue = mesActions.filter(a => actionsDispo[a.action_id] && actionsDispo[a.action_id].cat_variable);
-    const gainsDrogue = Math.round(actionsDrogue.reduce((acc, a) => acc + partGains(m.id, a), 0));
-    const gainsAction = Math.round(mesActions.filter(a => !(actionsDispo[a.action_id] && actionsDispo[a.action_id].cat_variable))
-      .reduce((acc, a) => acc + partGains(m.id, a), 0));
-    const totalGenere = gainsDrogue + gainsAction;
-    const dejaPaye = payes[m.id];
-    const payeDrogue = actionsDrogue.reduce((acc, a) => acc + Math.round(partGains(m.id, a) * tauxDrogueForAction(a) / 100), 0);
-    const payeActions = mesActions.filter(a => !(actionsDispo[a.action_id] && actionsDispo[a.action_id].cat_variable))
-      .reduce((acc, a) => acc + Math.round(partGains(m.id, a) * tauxActionsForAction(a) / 100), 0);
-    const suggestion = payeDrogue + payeActions;
-    const montant = dejaPaye ? Number(dejaPaye.montant) || 0 : suggestion;
-    if (dejaPaye) totalPaye += Number(dejaPaye.montant) || 0;
+        if (semaineSelectionnee === '') {
+          document.getElementById('paye-body').insertAdjacentHTML('beforeend',
+            `<tr><td colspan="5" class="empty">Choisis une semaine précise pour pouvoir payer.</td></tr>`);
+        }
+      });
+    }
 
-    return `<tr>
-      <td>${m.prenom} ${m.nom || ""}</td>
-      <td>${formatMoney(gainsDrogue)}</td>
-      <td>${formatMoney(gainsAction)}</td>
-      <td class="mono">${formatMoney(totalGenere)}</td>
-      <td id="montantCell_${m.id}">${formatMoney(montant)}</td>
-      <td>${isAdmin && !dejaPaye ? `<select id="typeArgent_${m.id}" onchange="onArgentChange('${m.id}', ${montant})"><option value="sale" selected>Sale</option><option value="propre">Propre (-${TAUX_BLANCHIMENT}%)</option></select>` : "-"}</td>
-      <td>${dejaPaye ? '<span class="badge badge-ok">Payé</span>' : (isAdmin ? `<span class="btn btn-sm btn-gold" onclick="payer('${m.id}',${montant})">Payer</span>` : '<span class="badge badge-warn">En attente</span>')}</td>
-    </tr>`;
-  }).join("") : '<tr class="empty-row"><td colspan="7">Aucun membre</td></tr>';
-
-  document.getElementById("totalPayeDisp").textContent = formatMoney(totalPaye);
-}
-
-function onArgentChange(membreId, montantBase) {
-  const typeArgent = document.getElementById("typeArgent_" + membreId).value;
-  const montantAffiche = typeArgent === "propre" ? Math.round(montantBase * (1 - TAUX_BLANCHIMENT / 100)) : montantBase;
-  document.getElementById("montantCell_" + membreId).textContent = formatMoney(montantAffiche);
-}
-
-async function payer(membreId, montantBase) {
-  if (montantBase < 0) { toast("Montant invalide.", true); return; }
-  const prenom = (RAW.membres[membreId] || {}).prenom || "ce membre";
-  const typeArgent = document.getElementById("typeArgent_" + membreId).value;
-  const montant = typeArgent === "propre" ? Math.round(montantBase * (1 - TAUX_BLANCHIMENT / 100)) : montantBase;
-  if (!confirm(`Confirmer le paiement de ${formatMoney(montant)} (argent ${typeArgent}${typeArgent === "propre" ? `, -${TAUX_BLANCHIMENT}% de blanchiment déjà appliqué` : ""}) à ${prenom} ?`)) return;
-
-  await db.ref(`payes/${SEMAINE_SEL.id}/${membreId}`).set({
-    montant, type_argent: typeArgent, date: todayISO(), par: SESSION.prenom, createdAt: Date.now()
-  });
-  if (montant > 0) {
-    await db.ref(`argent/${typeArgent}/` + uid()).set({
-      date: todayISO(), description: "Paye — " + prenom + " (" + SEMAINE_SEL.nom + ")",
-      type: "Sortie", montant, responsable: SESSION.prenom, createdAt: Date.now()
+    document.body.addEventListener('click', e => {
+      if (e.target.matches('#paye-body button[data-id]')) {
+        const membre_id = e.target.dataset.id;
+        const montant = parseFloat(e.target.dataset.montant);
+        db.ref('payes/' + uid()).set({
+          membre_id, montant, par: membre.prenom, date: new Date().toISOString(), semaine_id: semaineSelectionnee
+        }).then(() => { toast('Paiement enregistré pour ' + nomSemaine(semaineSelectionnee) + '.'); refresh(); renderHistorique(); });
+      }
     });
+
+    function renderHistorique() {
+      db.ref('payes').get().then(snap => {
+        const rows = entries(snap.val());
+        const tbody = document.getElementById('hist-body');
+        tbody.innerHTML = rows.length === 0
+          ? `<tr><td colspan="5" class="empty">Aucun paiement enregistré.</td></tr>`
+          : rows.slice().reverse().map(([id, p]) => {
+              const m = membresMap[p.membre_id];
+              const g = m ? gradeInfo(m.grade) : null;
+              const d = p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—';
+              return `<tr>
+                <td>${g ? g.emoji : '❓'} ${m ? m.prenom : '?'}</td>
+                <td>${p.semaine_id ? nomSemaine(p.semaine_id) : '—'}</td>
+                <td class="amt">${fmtMoney(p.montant)}</td>
+                <td>${p.par || '—'}</td>
+                <td>${d}</td>
+              </tr>`;
+            }).join('');
+      });
+    }
+
+    chargerSemaines().then(() => { refresh(); renderHistorique(); });
+    db.ref('payes').on('value', () => renderHistorique());
   }
-
-  toast("Paiement enregistré.");
-}
-
-(async function () {
-  await authReady;
-  SESSION = await initShell("paye", "Paye");
-  if (!SESSION) return;
-  const snapCfg = await db.ref("config").once("value");
-  const cfg = snapCfg.val() || {};
-  TAUX_DROGUE = cfg.taux_paye_drogue ?? 20;
-  TAUX_AUTRES = cfg.taux_paye_autres ?? 45;
-  TAUX_BLANCHIMENT = cfg.blanchiment_taux ?? 35;
-  renderContent();
-
-  db.ref("semaines").on("value", snap => { RAW.semaines = snap.val() || {}; renderSemainesSelect(); });
-  db.ref("membres").on("value", snap => { RAW.membres = snap.val() || {}; renderPaye(); });
-  db.ref("actions_dispo").on("value", snap => { RAW.actionsDispo = snap.val() || {}; renderPaye(); });
-  db.ref("argent/sale").on("value", snap => { RAW.argentSale = snap.val() || {}; renderPaye(); });
-  db.ref("argent/propre").on("value", snap => { RAW.argentPropre = snap.val() || {}; renderPaye(); });
-  db.ref("visibilite_grades").on("value", snap => { RAW.visi = snap.val() || {}; renderPaye(); });
-  db.ref("events_drogue").on("value", snap => { RAW.events = snap.val() || {}; renderPaye(); });
-  db.ref("config/taux_paye_grades").on("value", snap => { RAW.tauxGrades = snap.val() || {}; renderPaye(); });
-  db.ref("config").on("value", snap => {
-    const c = snap.val() || {};
-    TAUX_DROGUE = c.taux_paye_drogue ?? 20;
-    TAUX_AUTRES = c.taux_paye_autres ?? 45;
-    TAUX_BLANCHIMENT = c.blanchiment_taux ?? 35;
-    renderPaye();
-  });
-})();
 </script>
 </body>
 </html>

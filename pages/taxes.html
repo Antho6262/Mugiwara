@@ -3,137 +3,126 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taxes — The Roolio Family</title>
+<title>Les Mugiwara — Taxes</title>
 <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-<div id="shell"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Taxes</h2>
+      <div class="rule"></div>
+    </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <div class="card">
+      <h3>Nouvelle taxe</h3>
+      <form class="entry" id="form-taxe">
+        <div class="field"><label>Membre</label><select id="tx-membre" required></select></div>
+        <div class="field"><label>Type de taxe</label><select id="tx-type" required></select></div>
+        <div class="field"><label>Montant ($)</label><input type="number" id="tx-montant" min="0" step="1" required></div>
+        <div class="field"><label>Argent</label>
+          <select id="tx-argent"><option value="sale">Sale</option><option value="propre">Propre</option></select>
+        </div>
+        <div class="field"><label>Notes</label><input type="text" id="tx-notes" placeholder="optionnel"></div>
+        <button class="submit" type="submit">Enregistrer</button>
+      </form>
+    </div>
+
+    <div class="card" id="new-type-card" style="display:none;">
+      <h3>Nouveau type de taxe</h3>
+      <form class="entry" id="form-type">
+        <div class="field"><label>Nom</label><input type="text" id="ty-nom" placeholder="Ex: Taxe de territoire" required></div>
+        <button class="submit" type="submit">Créer</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Historique</h3>
+      <table>
+        <thead><tr><th>Membre</th><th>Type</th><th>Montant</th><th>Argent</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="tx-table"></tbody>
+      </table>
+      <div class="grand" id="tx-grand"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="../js/firebase-config.js"></script>
 <script src="../js/app.js"></script>
 <script>
-let SESSION, MEMBRES = {};
+  const membre = initShell('taxes', 'Taxes');
+  if (membre) {
+    if (canManage(membre)) document.getElementById('new-type-card').style.display = 'block';
 
-function renderContent() {
-  document.getElementById("content").innerHTML = `
-    <h1>Taxes</h1>
-    <div class="sigil-rule"></div>
-    <p class="muted small">Taxes payées par le groupe à d'autres groupes.</p>
+    let membresMap = {}, typesMap = {};
 
-    <div class="panel mt16">
-      <div class="panel-head"><h2>Nouvelle taxe</h2>
-        <span class="btn btn-sm btn-gold" onclick="toggleNouveauType()">➕ Nouveau type de taxe</span></div>
-      <div class="row" id="newTypeRow" style="display:none;">
-        <input type="text" id="newTypeNom" placeholder="Nom du type de taxe">
-        <button class="btn btn-sm" onclick="creerTypeTaxe()">Créer le type</button>
-      </div>
-      <div class="row mt8">
-        <div><label class="l">Groupe</label><input type="text" id="xGroupe"></div>
-        <div><label class="l">Téléphone</label><input type="tel" id="xTel" placeholder="Optionnel"></div>
-        <div><label class="l">Membre responsable</label><select id="xMembre"></select></div>
-      </div>
-      <div class="row mt8">
-        <div><label class="l">Type de taxe</label><select id="xTaxe"></select></div>
-        <div><label class="l">Montant ($)</label><input type="number" id="xMontant"></div>
-        <div><label class="l">Argent</label><select id="xTypeArgent"><option value="sale">Sale</option><option value="propre">Propre</option></select></div>
-      </div>
-      <div class="row mt8">
-        <div><label class="l">Date</label><input type="date" id="xDate"></div>
-        <div><label class="l">Notes</label><input type="text" id="xNotes" placeholder="Optionnel"></div>
-      </div>
-      <button class="btn btn-primary mt16" onclick="ajouterTaxe()">Enregistrer</button>
-    </div>
+    db.ref('membres').on('value', s => {
+      membresMap = Object.fromEntries(entries(s.val()));
+      document.getElementById('tx-membre').innerHTML = Object.entries(membresMap)
+        .filter(([id, m]) => !m.invisible || id === membre.id)
+        .map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`).join('')
+        || '<option value="">Aucun membre</option>';
+    });
 
-    <div class="panel">
-      <div class="panel-head"><h2>Historique</h2></div>
-      <table><thead><tr><th>Date</th><th>Groupe</th><th>Type</th><th>Responsable</th><th>Montant</th><th>Argent</th><th></th></tr></thead>
-        <tbody id="tblTaxes"><tr class="empty-row"><td colspan="7">Chargement…</td></tr></tbody></table>
-    </div>
-  `;
-  document.getElementById("xDate").value = todayISO();
-}
+    db.ref('types_taxes').on('value', s => {
+      typesMap = Object.fromEntries(entries(s.val()));
+      document.getElementById('tx-type').innerHTML = Object.entries(typesMap)
+        .map(([id, t]) => `<option value="${id}">${t.nom}</option>`).join('')
+        || '<option value="">Aucun type — crée-en un</option>';
+    });
 
-function toggleNouveauType() {
-  const row = document.getElementById("newTypeRow");
-  row.style.display = row.style.display === "none" ? "flex" : "none";
-}
-async function creerTypeTaxe() {
-  const nom = document.getElementById("newTypeNom").value.trim();
-  if (!nom) { toast("Nom requis.", true); return; }
-  await db.ref("types_taxes/" + uid()).set({ nom, createdAt: Date.now() });
-  document.getElementById("newTypeNom").value = "";
-  toast("Type de taxe créé.");
-}
+    document.getElementById('form-type').addEventListener('submit', e => {
+      e.preventDefault();
+      const nom = document.getElementById('ty-nom').value.trim();
+      if (!nom) return;
+      db.ref('types_taxes/' + uid()).set({ nom });
+      document.getElementById('form-type').reset();
+    });
 
-function renderTypesSelect(types) {
-  const sel = document.getElementById("xTaxe");
-  const prev = sel.value;
-  const list = entries(types).map(([id, t]) => ({ id, ...t }));
-  sel.innerHTML = list.length ? list.map(t => `<option value="${t.id}">${t.nom}</option>`).join("") : '<option value="">Aucun type — créez-en un</option>';
-  if (prev) sel.value = prev;
-}
+    document.getElementById('form-taxe').addEventListener('submit', e => {
+      e.preventDefault();
+      const membre_id = document.getElementById('tx-membre').value;
+      const taxe_id = document.getElementById('tx-type').value;
+      const montant = parseFloat(document.getElementById('tx-montant').value);
+      const type_argent = document.getElementById('tx-argent').value;
+      const notes = document.getElementById('tx-notes').value.trim();
+      if (!membre_id || !taxe_id || isNaN(montant)) return;
+      db.ref('taxes/' + uid()).set({
+        membre_id, taxe_id, taxe_nom: (typesMap[taxe_id] || {}).nom || '—',
+        montant, type_argent, notes, date: new Date().toISOString()
+      });
+      document.getElementById('form-taxe').reset();
+    });
 
-function renderMembresSelect() {
-  const sel = document.getElementById("xMembre");
-  const prev = sel.value;
-  sel.innerHTML = "";
-  entries(MEMBRES).forEach(([id, m]) => { if (m.actif !== false) sel.appendChild(new Option(m.prenom, id, id === SESSION.id, id === (prev || SESSION.id))); });
-}
+    db.ref('taxes').on('value', snap => {
+      const rows = entries(snap.val());
+      const tbody = document.getElementById('tx-table');
+      let grand = 0;
+      tbody.innerHTML = rows.length === 0
+        ? `<tr><td colspan="6" class="empty">Aucune taxe enregistrée.</td></tr>`
+        : rows.slice().reverse().map(([id, t]) => {
+            const m = membresMap[t.membre_id];
+            const g = m ? gradeInfo(m.grade) : null;
+            grand += (t.montant || 0);
+            return `<tr>
+              <td>${g ? g.emoji : '❓'} ${m ? m.prenom : '?'}</td>
+              <td>${t.taxe_nom}</td>
+              <td class="amt">${fmtMoney(t.montant)}</td>
+              <td>${t.type_argent === 'propre' ? '💵 Propre' : '🕶️ Sale'}</td>
+              <td>${t.notes || '—'}</td>
+              <td><button class="del" data-id="${id}">✕</button></td>
+            </tr>`;
+          }).join('');
+      document.getElementById('tx-grand').textContent = 'Total payé : ' + fmtMoney(grand);
+    });
 
-async function ajouterTaxe() {
-  const taxeId = document.getElementById("xTaxe").value;
-  const groupe = document.getElementById("xGroupe").value.trim();
-  const montant = Number(document.getElementById("xMontant").value) || 0;
-  const membreId = document.getElementById("xMembre").value;
-  if (!taxeId || !groupe || montant <= 0) { toast("Complétez le formulaire.", true); return; }
-  const typeArgent = document.getElementById("xTypeArgent").value;
-  const snapType = await db.ref("types_taxes/" + taxeId).once("value");
-  const taxeNom = (snapType.val() || {}).nom || "Taxe";
-  const m = MEMBRES[membreId] || {};
-  const id = uid();
-  const date = document.getElementById("xDate").value || todayISO();
-
-  await db.ref("taxes/" + id).set({
-    groupe, telephone: document.getElementById("xTel").value.trim(),
-    membre_id: membreId, prenom_membre: m.prenom || "", taxe_id: taxeId, taxe_nom: taxeNom,
-    montant, type_argent: typeArgent, notes: document.getElementById("xNotes").value.trim(), date, createdAt: Date.now()
-  });
-  await db.ref(`argent/${typeArgent}/${id}`).set({ date, description: "Taxe " + taxeNom + " — " + groupe, type: "Sortie", montant, responsable: m.prenom || SESSION.prenom, createdAt: Date.now() });
-
-  toast("Taxe enregistrée.");
-  document.getElementById("xGroupe").value = ""; document.getElementById("xMontant").value = ""; document.getElementById("xNotes").value = "";
-}
-
-let TAXES_RAW = {};
-function renderTaxes() {
-  const list = entries(TAXES_RAW).map(([id, t]) => ({ id, ...t })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  const canDelete = SESSION.role === "admin";
-  document.getElementById("tblTaxes").innerHTML = list.length ? list.map(t => `
-    <tr><td>${t.date}</td><td>${t.groupe}</td><td>${t.taxe_nom}</td><td>${t.prenom_membre}</td><td>${formatMoney(t.montant)}</td><td>${t.type_argent}</td>
-    <td>${canDelete ? `<span class="btn btn-sm btn-danger" onclick="supprimerTaxe('${t.id}')">Suppr.</span>` : ""}</td></tr>
-  `).join("") : '<tr class="empty-row"><td colspan="7">Aucune taxe</td></tr>';
-}
-async function supprimerTaxe(id) {
-  if (!confirm("Supprimer cette taxe ? Le montant sera réajouté automatiquement.")) return;
-  const snap = await db.ref("taxes/" + id).once("value");
-  const t = snap.val();
-  if (t) await db.ref(`argent/${t.type_argent}/${id}`).remove();
-  await db.ref("taxes/" + id).remove();
-  toast("Taxe supprimée, rollback effectué.");
-}
-
-(async function () {
-  await authReady;
-  SESSION = await initShell("taxes", "Taxes");
-  if (!SESSION) return;
-  renderContent();
-  db.ref("types_taxes").on("value", snap => renderTypesSelect(snap.val() || {}));
-  db.ref("membres").on("value", snap => { MEMBRES = snap.val() || {}; renderMembresSelect(); });
-  db.ref("taxes").on("value", snap => { TAXES_RAW = snap.val() || {}; renderTaxes(); });
-})();
+    document.body.addEventListener('click', e => {
+      if (e.target.matches('#tx-table .del')) db.ref('taxes/' + e.target.dataset.id).remove();
+    });
+  }
 </script>
 </body>
 </html>

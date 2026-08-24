@@ -3,245 +3,165 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stats — The Roolio Family</title>
+<title>Les Mugiwara — Stats & Quotas</title>
 <link rel="stylesheet" href="../css/style.css">
+<style>
+  .bar-wrap{background:var(--bg-1);border:1px solid var(--line);border-radius:20px;height:10px;overflow:hidden;width:70px;}
+  .bar-fill{height:100%;background:linear-gradient(90deg, var(--sunset-2), var(--gold));}
+  .quota-cell{display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .quota-cell .n{font-family:'JetBrains Mono',monospace;font-size:12px;}
+  .quota-cell .n.ok{color:var(--gold);font-weight:600;}
+</style>
 </head>
 <body>
-<div id="shell"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Stats & Quotas</h2>
+      <div class="rule"></div>
+    </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="../js/firebase-config.js"></script>
-<script src="../js/app.js"></script>
-<script>
-let SESSION;
-let MEMBRES = [], ACTIONS_DISPO = {}, SEMAINES = [], ACTIONS_ALL = [], PRODUITS_DROGUE = [];
+    <div class="tabs">
+      <button data-tab="stats" class="active">🧭 Stats</button>
+      <button data-tab="quotas">📋 Quotas</button>
+    </div>
 
-function renderContent() {
-  document.getElementById("content").innerHTML = `
-    <h1>Stats</h1>
-    <div class="sigil-rule"></div>
-
-    <div class="panel mt16">
-      <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:12px;">
-        <div><label class="l">Type</label><select id="selType" onchange="onTypeChange()">
-          <option value="action">Par action</option>
-          <option value="drogue">Vente de drogue</option>
-        </select></div>
-        <div id="wrapAction"><label class="l">Action</label><select id="selAction" onchange="chargerStats()"></select></div>
-        <div id="wrapDrogue" style="display:none"><label class="l">Drogue</label><select id="selDrogue" onchange="chargerStats()"></select></div>
-        <div><label class="l">Portée</label><select id="selPortee" onchange="onPorteeChange()">
-          <option value="groupe">Tout le groupe</option>
-          <option value="membre">Par membre</option>
-        </select></div>
-        <div id="wrapMembre" style="display:none"><label class="l">Membre</label><select id="selMembre" onchange="chargerStats()"></select></div>
-        <div><label class="l">Semaine</label><select id="selSemaine" onchange="chargerStats()"></select></div>
+    <div class="tabpanel active" id="panel-stats">
+      <div class="grid cols-4" id="stat-cards"></div>
+      <div class="card">
+        <h3>Meilleurs vendeurs (pochons)</h3>
+        <table><thead><tr><th>Membre</th><th>Pochons vendus</th></tr></thead><tbody id="top-vente"></tbody></table>
+      </div>
+      <div class="card">
+        <h3>Meilleurs go fast</h3>
+        <table><thead><tr><th>Membre</th><th>Cambriolages réalisés</th></tr></thead><tbody id="top-gofast"></tbody></table>
       </div>
     </div>
 
-    <div class="grid cols-2 mt16">
-      <div class="card"><h3>Gains totaux</h3><div class="stat-num gold" id="totalGains">0 $</div></div>
-      <div class="card" id="cardQuantite"><h3 id="titreQuantite">Quantité</h3><div class="stat-num gold" id="quantiteVal">—</div></div>
+    <div class="tabpanel" id="panel-quotas">
+      <div class="note-hint" style="margin-bottom:16px;">Les objectifs par catégorie se configurent dans Admin → Quotas. Remis à zéro à chaque nouvelle semaine.</div>
+      <div class="card">
+        <h3>Progression de la semaine</h3>
+        <table style="font-size:13px;">
+          <thead><tr>
+            <th>Membre</th>
+            <th>🏴‍☠️ Actions (+ 🏠 Cambriolage)</th>
+            <th>💊 Vente</th>
+            <th>🧪 Labo</th>
+            <th>🏦 Fleeca</th>
+            <th>🔫 Armurerie</th>
+          </tr></thead>
+          <tbody id="quota-body"></tbody>
+        </table>
+      </div>
     </div>
+  </main>
+</div>
 
-    <div class="panel mt24" id="panelClassement">
-      <div class="panel-head"><h2>Classement membres</h2></div>
-      <table><thead><tr id="theadClassement"><th>#</th><th>Membre</th><th>Actions</th><th>Réussites</th><th>Gains générés</th></tr></thead>
-        <tbody id="tblClassement"><tr class="empty-row"><td colspan="5">Chargement…</td></tr></tbody></table>
-    </div>
-
-    <div class="panel">
-      <div class="panel-head"><h2>Détail par semaine</h2></div>
-      <table><thead><tr><th>Semaine</th><th id="theadSemainesActions">Actions</th><th>Gains sale</th><th>Gains propre</th></tr></thead>
-        <tbody id="tblSemaines"><tr class="empty-row"><td colspan="4">Chargement…</td></tr></tbody></table>
-    </div>
-  `;
-}
-
-function onTypeChange() {
-  const t = document.getElementById("selType").value;
-  document.getElementById("wrapAction").style.display = t === "action" ? "" : "none";
-  document.getElementById("wrapDrogue").style.display = t === "drogue" ? "" : "none";
-  chargerStats();
-}
-
-function onPorteeChange() {
-  const p = document.getElementById("selPortee").value;
-  document.getElementById("wrapMembre").style.display = p === "membre" ? "" : "none";
-  chargerStats();
-}
-
-let RAW = { membres: {}, actionsDispo: {}, semaines: {}, actionsParSemaine: {}, stock: {}, visi: {} };
-
-function recalcDerived() {
-  const visi = RAW.visi;
-  const gradesMasques = new Set(Object.keys(visi).filter(g => visi[g] && visi[g].stats === false));
-  MEMBRES = entries(RAW.membres).map(([id, m]) => ({ id, ...m })).filter(m => m.actif !== false && !gradesMasques.has(m.grade));
-  const membresMasquesIds = new Set(entries(RAW.membres).filter(([, m]) => gradesMasques.has(m.grade)).map(([id]) => id));
-  ACTIONS_DISPO = RAW.actionsDispo;
-  SEMAINES = entries(RAW.semaines).map(([id, s]) => ({ id, ...s })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  ACTIONS_ALL = [];
-  SEMAINES.forEach(s => { ACTIONS_ALL = ACTIONS_ALL.concat(entries(RAW.actionsParSemaine[s.id]).map(([id, a]) => ({ ...a, semaineId: s.id }))); });
-  ACTIONS_ALL = ACTIONS_ALL.filter(a => !membresMasquesIds.has(a.membre_id));
-
-  const semaineActive = SEMAINES.find(s => s.bloquee !== true) || SEMAINES[0];
-  const selSemaine = document.getElementById("selSemaine");
-  const prevSemaine = selSemaine.value;
-  selSemaine.innerHTML = SEMAINES.map(s =>
-    `<option value="${s.id}" ${semaineActive && s.id === semaineActive.id ? "selected" : ""}>${s.nom}${semaineActive && s.id === semaineActive.id ? " (active)" : ""}</option>`
-  ).join("") + `<option value="toutes">Toutes les semaines</option>`;
-  if (prevSemaine) selSemaine.value = prevSemaine;
-
-  const stock = RAW.stock;
-  const catDrogue = entries(stock).find(([, cat]) => (cat.nom || "").toLowerCase() === "drogue");
-  PRODUITS_DROGUE = catDrogue ? entries(catDrogue[1].produits).map(([, p]) => p.nom) : [];
-
-  const actionsClassiques = entries(ACTIONS_DISPO).filter(([, a]) => !a.cat_variable);
-  const selAction = document.getElementById("selAction");
-  const prevAction = selAction.value;
-  selAction.innerHTML = `<option value="">Toutes les actions</option>` +
-    (actionsClassiques.length ? actionsClassiques.map(([id, a]) => `<option value="${id}">${a.nom}</option>`).join("") : "");
-  if (prevAction) selAction.value = prevAction;
-
-  const selDrogue = document.getElementById("selDrogue");
-  const prevDrogue = selDrogue.value;
-  selDrogue.innerHTML = `<option value="">Toutes les drogues</option>` + PRODUITS_DROGUE.map(nom => `<option value="${nom}">${nom}</option>`).join("");
-  if (prevDrogue) selDrogue.value = prevDrogue;
-
-  const selMembre = document.getElementById("selMembre");
-  const prevMembre = selMembre.value;
-  selMembre.innerHTML = MEMBRES.map(m => `<option value="${m.id}">${m.prenom} ${m.nom || ""}</option>`).join("");
-  if (prevMembre) selMembre.value = prevMembre;
-
-  chargerStats();
-}
-
-function chargerStats() {
-  const type = document.getElementById("selType").value;
-  const portee = document.getElementById("selPortee").value;
-  const actionId = document.getElementById("selAction").value;
-  const drogueNom = document.getElementById("selDrogue").value;
-  const membreId = document.getElementById("selMembre").value;
-
-  const semaineFiltre = document.getElementById("selSemaine").value;
-
-  let base = semaineFiltre === "toutes" ? ACTIONS_ALL : ACTIONS_ALL.filter(a => a.semaineId === semaineFiltre);
-  if (type === "action") base = actionId ? base.filter(a => a.action_id === actionId) : base.filter(a => !a.produit_drogue_id);
-  else if (type === "drogue") base = drogueNom ? base.filter(a => a.produit_drogue === drogueNom) : base.filter(a => a.produit_drogue_id && a.action !== "Labo");
-
-  if (portee === "membre") base = base.filter(a => a.membre_id === membreId);
-
-  const isSpecific = type === "action" || type === "drogue";
-
-  const gains = base.reduce((acc, a) => acc + Number(a.gains_totaux || 0), 0);
-  document.getElementById("totalGains").textContent = formatMoney(gains);
-
-  if (type === "drogue") {
-    const qteVendue = base.filter(a => a.resultat === "Réussite").reduce((acc, a) => acc + Number(a.quantite || 0), 0);
-    document.getElementById("titreQuantite").textContent = "Quantité vendue";
-    document.getElementById("quantiteVal").textContent = `${drogueNom || "Toutes les drogues"} : ${qteVendue}`;
-  } else if (type === "action") {
-    const qteAction = base.filter(a => a.resultat === "Réussite").reduce((acc, a) => acc + Number(a.quantite || 0), 0);
-    const actionNom = actionId ? ((ACTIONS_DISPO[actionId] && ACTIONS_DISPO[actionId].nom) || "") : "Toutes les actions";
-    document.getElementById("titreQuantite").textContent = "Quantité réalisée";
-    document.getElementById("quantiteVal").textContent = `${actionNom} : ${qteAction}`;
-  }
-
-  {
-    const parMembre = {};
-    base.forEach(a => {
-      const key = a.prenom_membre || "?";
-      if (!parMembre[key]) parMembre[key] = { actions: 0, reussites: 0, gains: 0, qte: 0, parDrogue: {}, parAction: {} };
-      parMembre[key].actions++;
-      if (a.resultat === "Réussite") {
-        parMembre[key].reussites++;
-        parMembre[key].qte += Number(a.quantite || 0);
-        if (a.produit_drogue) parMembre[key].parDrogue[a.produit_drogue] = (parMembre[key].parDrogue[a.produit_drogue] || 0) + Number(a.quantite || 0);
-        if (a.action) parMembre[key].parAction[a.action] = (parMembre[key].parAction[a.action] || 0) + Number(a.quantite || 0);
-      }
-      parMembre[key].gains += Number(a.gains_totaux || 0);
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('stats', 'Stats & Quotas');
+  if (membre) {
+    document.querySelectorAll('.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
     });
-    const classement = Object.entries(parMembre).sort((a, b) => b[1].gains - a[1].gains);
-    const toutesDrogues = type === "drogue" && !drogueNom;
-    const toutesActions = type === "action" && !actionId;
-    const nomsActionsClassiques = entries(ACTIONS_DISPO).filter(([, a]) => !a.cat_variable).map(([, a]) => a.nom);
-    const actionNomClassement = actionId ? ((ACTIONS_DISPO[actionId] && ACTIONS_DISPO[actionId].nom) || "") : "Toutes les actions";
 
-    document.getElementById("theadClassement").innerHTML = type === "drogue"
-      ? (toutesDrogues
-          ? `<th>#</th><th>Membre</th>` + PRODUITS_DROGUE.map(nom => `<th>${nom}</th>`).join("") + `<th>Gains générés</th>`
-          : `<th>#</th><th>Membre</th><th>Quantité vendue</th><th>Gains générés</th>`)
-      : type === "action"
-        ? (toutesActions
-            ? `<th>#</th><th>Membre</th>` + nomsActionsClassiques.map(nom => `<th>${nom}</th>`).join("") + `<th>Gains générés</th>`
-            : `<th>#</th><th>Membre</th><th>Quantité réalisée</th><th>Gains générés</th>`)
-        : `<th>#</th><th>Membre</th><th>Actions</th><th>Réussites</th><th>Gains générés</th>`;
+    Promise.all([
+      db.ref('membres').get(),
+      db.ref('actions').get(),
+      db.ref('cambriolages').get(),
+      db.ref('ventes').get(),
+      db.ref('labos').get(),
+      db.ref('fleecas').get(),
+      db.ref('armureries').get(),
+      db.ref('config').get()
+    ]).then(([mSnap, aSnap, gSnap, vSnap, lSnap, flSnap, arSnap, cSnap]) => {
+      const membres = Object.fromEntries(entries(mSnap.val()));
+      const cfg = cSnap.val() || {};
+      const actions = entries(aSnap.val()).filter(([,a]) => a.resultat !== 'Échec');
+      const gofasts = entries(gSnap.val()).filter(([,g]) => g.resultat !== 'Échec');
+      const ventes = entries(vSnap.val()).filter(([,v]) => v.resultat !== 'Échec');
+      const labos = entries(lSnap.val()).filter(([,l]) => l.resultat !== 'Échec');
+      const fleecas = entries(flSnap.val()).filter(([,r]) => r.resultat !== 'Échec');
+      const armureries = entries(arSnap.val()).filter(([,r]) => r.resultat !== 'Échec');
 
-    let lignesClassement = classement.length ? classement.map(([nom, d], i) => {
-      if (type === "drogue") {
-        if (toutesDrogues) {
-          const cellsDrogue = PRODUITS_DROGUE.map(dn => `<td>${d.parDrogue[dn] || 0}</td>`).join("");
-          return `<tr><td>${i + 1}</td><td>${nom}</td>${cellsDrogue}<td>${formatMoney(d.gains)}</td></tr>`;
-        }
-        return `<tr><td>${i + 1}</td><td>${nom}</td><td>${drogueNom} : ${d.qte}</td><td>${formatMoney(d.gains)}</td></tr>`;
-      }
-      if (type === "action") {
-        if (toutesActions) {
-          const cellsAction = nomsActionsClassiques.map(an => `<td>${d.parAction[an] || 0}</td>`).join("");
-          return `<tr><td>${i + 1}</td><td>${nom}</td>${cellsAction}<td>${formatMoney(d.gains)}</td></tr>`;
-        }
-        return `<tr><td>${i + 1}</td><td>${nom}</td><td>${actionNomClassement} : ${d.qte}</td><td>${formatMoney(d.gains)}</td></tr>`;
-      }
-      return `<tr><td>${i + 1}</td><td>${nom}</td><td>${d.actions}</td><td>${d.reussites}</td><td>${formatMoney(d.gains)}</td></tr>`;
-    }).join("") : `<tr class="empty-row"><td colspan="${
-      type === "drogue" ? (toutesDrogues ? PRODUITS_DROGUE.length + 3 : 4)
-      : type === "action" ? (toutesActions ? nomsActionsClassiques.length + 3 : 4)
-      : 5
-    }">Aucune donnée</td></tr>`;
+      document.getElementById('stat-cards').innerHTML = `
+        <div class="stat"><div class="v">${actions.length}</div><div class="l">🏴‍☠️ Actions totales</div></div>
+        <div class="stat"><div class="v">${gofasts.reduce((s,[,g])=>s+(g.count||0),0)}</div><div class="l">🏠 Cambriolages totaux</div></div>
+        <div class="stat"><div class="v">${ventes.reduce((s,[,v])=>s+(v.qty||0),0)}</div><div class="l">💊 Pochons vendus</div></div>
+        <div class="stat"><div class="v">${fleecas.length + armureries.length}</div><div class="l">🏦 Braquages Fleeca/Armurerie</div></div>
+      `;
 
-    if (classement.length && isSpecific) {
-      const totalGains = classement.reduce((acc, [, d]) => acc + d.gains, 0);
-      if (toutesDrogues) {
-        const totauxDrogue = PRODUITS_DROGUE.map(dn => classement.reduce((acc, [, d]) => acc + (d.parDrogue[dn] || 0), 0));
-        lignesClassement += `<tr style="font-weight:bold;border-top:1px solid var(--gold)"><td></td><td>Total</td>${totauxDrogue.map(t => `<td>${t}</td>`).join("")}<td>${formatMoney(totalGains)}</td></tr>`;
-      } else if (toutesActions) {
-        const totauxAction = nomsActionsClassiques.map(an => classement.reduce((acc, [, d]) => acc + (d.parAction[an] || 0), 0));
-        lignesClassement += `<tr style="font-weight:bold;border-top:1px solid var(--gold)"><td></td><td>Total</td>${totauxAction.map(t => `<td>${t}</td>`).join("")}<td>${formatMoney(totalGains)}</td></tr>`;
-      } else {
-        const totalQte = classement.reduce((acc, [, d]) => acc + d.qte, 0);
-        const label = type === "drogue" ? drogueNom : actionNomClassement;
-        lignesClassement += `<tr style="font-weight:bold;border-top:1px solid var(--gold)"><td></td><td>Total</td><td>${label} : ${totalQte}</td><td>${formatMoney(totalGains)}</td></tr>`;
-      }
-    }
+      const parVente = {}; ventes.forEach(([,v]) => parVente[v.membre_id] = (parVente[v.membre_id]||0) + (v.qty||0));
+      const parGofast = {}; gofasts.forEach(([,g]) => parGofast[g.membre_id] = (parGofast[g.membre_id]||0) + (g.count||0));
 
-    document.getElementById("tblClassement").innerHTML = lignesClassement;
+      const topList = (obj, unit) => Object.entries(obj)
+        .filter(([id]) => membres[id] && !membres[id].invisible)
+        .sort((a,b) => b[1]-a[1]).slice(0,8)
+        .map(([id, n]) => `<tr><td>${gradeInfo(membres[id].grade).emoji} ${membres[id].prenom}</td><td class="amt">${n} ${unit}</td></tr>`).join('')
+        || `<tr><td colspan="2" class="empty">Rien pour le moment.</td></tr>`;
+
+      document.getElementById('top-vente').innerHTML = topList(parVente, '💊');
+      document.getElementById('top-gofast').innerHTML = topList(parGofast, '🏠');
+
+      // ---- Quotas (par catégorie) ----
+      const quotas = cfg.quotas || {};
+      const activeWeekId = cfg.semaine_active_id;
+
+      const compteCat = { actions: {}, vente: {}, labo: {}, fleeca: {}, armurerie: {} };
+      const add = (list, cat, key) => list.forEach(([, item]) => {
+        if (item.semaine_id === activeWeekId) compteCat[cat][item[key]] = (compteCat[cat][item[key]] || 0) + 1;
+      });
+      const addQty = (list, cat, key, qtyKey) => list.forEach(([, item]) => {
+        if (item.semaine_id === activeWeekId) compteCat[cat][item[key]] = (compteCat[cat][item[key]] || 0) + (item[qtyKey] || 0);
+      });
+      add(actions, 'actions', 'membre_id');
+      add(gofasts, 'actions', 'membre_id'); // cambriolage compte comme 1 action pour le quota (paye inchangée)
+      addQty(ventes, 'vente', 'membre_id', 'qty'); // compte le nombre de pochons vendus, pas le nombre de ventes
+      addQty(labos, 'labo', 'membre_id', 'branche_qty'); // compte le nombre de branches récoltées
+      fleecas.forEach(([, r]) => {
+        if (r.semaine_id !== activeWeekId) return;
+        (r.membres_ids || []).forEach(mid => { compteCat.fleeca[mid] = (compteCat.fleeca[mid] || 0) + 1; });
+      });
+      armureries.forEach(([, r]) => {
+        if (r.semaine_id !== activeWeekId) return;
+        (r.membres_ids || []).forEach(mid => { compteCat.armurerie[mid] = (compteCat.armurerie[mid] || 0) + 1; });
+      });
+
+      const cell = (cat, id) => {
+        const cible = quotas[cat] || 0;
+        const fait = compteCat[cat][id] || 0;
+        if (cible <= 0) return `<td><div class="quota-cell"><span class="n">${fait}</span></div></td>`;
+        const pct = Math.min(100, Math.round(fait / cible * 100));
+        return `<td><div class="quota-cell">
+          <span class="n ${fait >= cible ? 'ok' : ''}">${fait}/${cible}</span>
+          <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;"></div></div>
+        </div></td>`;
+      };
+
+      const rows = Object.entries(membres).filter(([,m]) => m.actif !== false && !m.invisible).map(([id, m]) => {
+        const g = gradeInfo(m.grade);
+        return `<tr>
+          <td>${g.emoji} ${m.prenom}</td>
+          ${cell('actions', id)}
+          ${cell('vente', id)}
+          ${cell('labo', id)}
+          ${cell('fleeca', id)}
+          ${cell('armurerie', id)}
+        </tr>`;
+      }).join('');
+      document.getElementById('quota-body').innerHTML = rows || `<tr><td colspan="6" class="empty">Aucun membre.</td></tr>`;
+    });
   }
-
-  document.getElementById("theadSemainesActions").textContent = type === "drogue" ? "Quantité vendue" : (type === "action" ? "Quantité réalisée" : "Actions");
-  const semainesAffichees = semaineFiltre === "toutes" ? SEMAINES : SEMAINES.filter(s => s.id === semaineFiltre);
-  const lignesSemaines = semainesAffichees.map(s => {
-    const acts = base.filter(a => a.semaineId === s.id);
-    const gSale = acts.reduce((acc, a) => acc + Number(a.argent_sale || 0), 0);
-    const gPropre = acts.reduce((acc, a) => acc + Number(a.argent_propre || 0), 0);
-    const valActions = isSpecific ? acts.filter(a => a.resultat === "Réussite").reduce((acc, a) => acc + Number(a.quantite || 0), 0) : acts.length;
-    return `<tr><td>${s.nom}</td><td>${valActions}</td><td>${formatMoney(gSale)}</td><td>${formatMoney(gPropre)}</td></tr>`;
-  });
-  document.getElementById("tblSemaines").innerHTML = lignesSemaines.length ? lignesSemaines.join("") : '<tr class="empty-row"><td colspan="4">Aucune semaine</td></tr>';
-}
-
-(async function () {
-  await authReady;
-  SESSION = await initShell("stats", "Stats");
-  if (!SESSION) return;
-  renderContent();
-  db.ref("membres").on("value", snap => { RAW.membres = snap.val() || {}; recalcDerived(); });
-  db.ref("actions_dispo").on("value", snap => { RAW.actionsDispo = snap.val() || {}; recalcDerived(); });
-  db.ref("semaines").on("value", snap => { RAW.semaines = snap.val() || {}; recalcDerived(); });
-  db.ref("actions").on("value", snap => { RAW.actionsParSemaine = snap.val() || {}; recalcDerived(); });
-  db.ref("stock").on("value", snap => { RAW.stock = snap.val() || {}; recalcDerived(); });
-  db.ref("visibilite_grades").on("value", snap => { RAW.visi = snap.val() || {}; recalcDerived(); });
-})();
 </script>
 </body>
 </html>

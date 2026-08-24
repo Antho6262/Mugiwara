@@ -3,112 +3,101 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Roolio Family</title>
+<title>Les Mugiwara — Connexion</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="login-body">
-
 <div class="login-wrap">
-  <div class="login-card fade-in">
-    <img src="img/logo.png" alt="The Roolio Family" class="login-coin">
-    <div class="login-brand">THE ROOLIO FAMILY</div>
-    <div class="login-sub">Honneur · Loyauté · Silence</div>
-    <div class="sigil-rule"></div>
-
-    <div class="field">
-      <label>Membre</label>
-      <select id="selMembre"><option value="">Chargement…</option></select>
-    </div>
-    <div class="field">
-      <label>Mot de passe</label>
-      <input type="password" id="inpPass" placeholder="••••••••">
-    </div>
-    <button class="btn btn-primary" onclick="doLogin()">Se connecter</button>
-    <div class="login-error" id="errMsg"></div>
-    <div class="login-foot"><a href="#" onclick="toggleOublie(event)" style="color:var(--gold)">Mot de passe oublié ?</a></div>
-    <div id="oublieWrap" style="display:none;margin-top:10px;">
-      <p class="small muted">Une demande sera envoyée à un admin, qui réinitialisera ton mot de passe.</p>
-      <button class="btn btn-gold" style="width:100%;" onclick="envoyerDemandeOubli()">Envoyer la demande</button>
-      <div class="small" id="oublieMsg" style="margin-top:6px;"></div>
-    </div>
-    <div class="login-foot">Première installation ? <a href="setup.html" style="color:var(--gold)">Initialiser le site</a></div>
+  <div class="login-card">
+    <img src="img/logo.png" alt="Les Mugiwara" class="login-logo">
+    <h1>MUGIWARA</h1>
+    <div class="login-sub">L'ÉQUIPAGE</div>
+    <form id="form-login">
+      <div class="field">
+        <label>Pseudo</label>
+        <select id="l-pseudo" required></select>
+        <input type="text" id="l-pseudo-texte" placeholder="Ton pseudo" style="display:none;" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="l-pass" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button class="submit" type="submit" style="margin-top:6px;">Embarquer</button>
+    </form>
+    <div class="login-error" id="l-error"></div>
+    <div class="login-links">Première utilisation ? <a href="setup.html">Initialiser le site</a></div>
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script>
-let MEMBRES = {};
+  // déjà connecté -> direct au dashboard
+  if (getSession()) window.location.href = 'pages/dashboard.html';
 
-async function chargerMembres() {
-  const sel = document.getElementById("selMembre");
-  try {
-    const snap = await db.ref("membres").once("value");
-    const data = snap.val() || {};
-    MEMBRES = data;
-    sel.innerHTML = '<option value="">— Sélectionner —</option>';
-    entries(data).forEach(([id, m]) => {
-      if (m.actif === false) return;
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = m.prenom + (m.nom ? " " + m.nom : "");
-      sel.appendChild(opt);
-    });
-    if (Object.keys(data).length === 0) {
-      sel.innerHTML = '<option value="">Aucun membre — lancez l\'initialisation</option>';
+  // Connexion secrète : ajouter ?d à l'URL affiche un champ pseudo libre
+  // (au lieu du menu déroulant), pour se connecter sans apparaître dans la liste.
+  const modeDirect = new URLSearchParams(location.search).has('d');
+  if (modeDirect) {
+    document.getElementById('l-pseudo').style.display = 'none';
+    document.getElementById('l-pseudo').required = false;
+    document.getElementById('l-pseudo-texte').style.display = 'block';
+    document.getElementById('l-pseudo-texte').required = true;
+  }
+
+  // remplit la liste déroulante des pseudos (les membres invisibles n'y apparaissent jamais)
+  db.ref('membres').get().then(snap => {
+    const membres = entries(snap.val())
+      .filter(([id, m]) => m.actif !== false && !m.invisible)
+      .sort((a, b) => a[1].prenom.localeCompare(b[1].prenom));
+    const sel = document.getElementById('l-pseudo');
+    sel.innerHTML = membres.length === 0
+      ? '<option value="">Aucun membre — initialise le site</option>'
+      : '<option value="" disabled selected>— Choisis ton pseudo —</option>' +
+        membres.map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`).join('');
+  }).catch(err => console.error(err));
+
+  document.getElementById('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pass = document.getElementById('l-pass').value;
+    const errEl = document.getElementById('l-error');
+    errEl.textContent = '';
+
+    try {
+      let membreId, m;
+
+      if (modeDirect) {
+        const pseudoSaisi = document.getElementById('l-pseudo-texte').value.trim();
+        if (!pseudoSaisi) { errEl.textContent = 'Entre ton pseudo.'; return; }
+        const snap = await db.ref('membres').get();
+        const found = entries(snap.val()).find(([id, mm]) =>
+          mm.prenom && mm.prenom.toLowerCase() === pseudoSaisi.toLowerCase()
+        );
+        if (!found) { errEl.textContent = 'Pseudo introuvable.'; return; }
+        [membreId, m] = found;
+      } else {
+        membreId = document.getElementById('l-pseudo').value;
+        if (!membreId) { errEl.textContent = 'Choisis ton pseudo.'; return; }
+        const snap = await db.ref('membres/' + membreId).get();
+        m = snap.val();
+      }
+
+      if (!m || m.mot_de_passe !== pass) {
+        errEl.textContent = 'Mot de passe incorrect.';
+        return;
+      }
+      if (m.actif === false) {
+        errEl.textContent = 'Ce compte est désactivé.';
+        return;
+      }
+      setSession({ id: membreId, prenom: m.prenom, grade: m.grade, role: m.role || 'membre' });
+      window.location.href = 'pages/dashboard.html';
+    } catch (err) {
+      errEl.textContent = "Impossible de contacter le site — vérifie ta config Firebase.";
+      console.error(err);
     }
-  } catch (e) {
-    sel.innerHTML = '<option value="">Erreur de connexion Firebase</option>';
-    document.getElementById("errMsg").textContent = "Vérifiez la config Firebase (js/firebase-config.js).";
-  }
-}
-
-function doLogin() {
-  const id = document.getElementById("selMembre").value;
-  const pass = document.getElementById("inpPass").value.trim();
-  const errEl = document.getElementById("errMsg");
-  errEl.textContent = "";
-  if (!id) { errEl.textContent = "Sélectionnez un membre."; return; }
-  const m = MEMBRES[id];
-  if (!m || m.mot_de_passe !== pass) {
-    errEl.textContent = "Mot de passe incorrect.";
-    return;
-  }
-  if (m.actif === false) {
-    errEl.textContent = "Compte désactivé.";
-    return;
-  }
-  authReady.then(user => {
-    return db.ref("sessions/" + user.uid).set(id);
-  }).then(() => {
-    setSession({ id, prenom: m.prenom, nom: m.nom || "", grade: m.grade, role: m.role || "membre" });
-    window.location.href = "pages/dashboard.html";
-  }).catch(() => {
-    errEl.textContent = "Erreur de connexion.";
   });
-}
-
-function toggleOublie(e) {
-  e.preventDefault();
-  const wrap = document.getElementById("oublieWrap");
-  wrap.style.display = wrap.style.display === "none" ? "block" : "none";
-}
-
-async function envoyerDemandeOubli() {
-  const id = document.getElementById("selMembre").value;
-  const msg = document.getElementById("oublieMsg");
-  if (!id) { msg.textContent = "Sélectionne d'abord ton membre dans la liste ci-dessus."; return; }
-  const m = MEMBRES[id];
-  await db.ref("reset_requests/" + id).set({
-    membre_id: id, prenom: m.prenom, nom: m.nom || "", date: new Date().toISOString().slice(0, 10), createdAt: Date.now()
-  });
-  msg.textContent = "Demande envoyée. Un admin va réinitialiser ton mot de passe.";
-}
-
-document.getElementById("inpPass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
-chargerMembres();
 </script>
 </body>
 </html>
