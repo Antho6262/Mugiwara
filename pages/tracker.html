@@ -258,14 +258,17 @@
 
     function fillMemberSelects() {
       const visible = ([id, m]) => m.actif !== false && (!m.invisible || id === membre.id);
-      const opts = Object.entries(membres)
-        .filter(visible)
+      const listePourSelect = isAdmin(membre)
+        ? Object.entries(membres).filter(visible)
+        : Object.entries(membres).filter(([id]) => id === membre.id); // non-admin : soi-même uniquement
+      const opts = listePourSelect
         .map(([id, m]) => `<option value="${id}">${gradeInfo(m.grade).emoji} ${m.prenom}</option>`)
         .join('') || '<option value="">Aucun membre — ajoute-le dans Admin</option>';
       ['a-member', 'g-member', 'v-member', 'l-member'].forEach(sid => {
         const sel = document.getElementById(sid);
         const cur = sel.value;
         sel.innerHTML = opts;
+        sel.disabled = !isAdmin(membre);
         if (cur) sel.value = cur;
       });
 
