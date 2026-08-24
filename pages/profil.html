@@ -3,71 +3,91 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Les Mugiwara — Profil</title>
+<title>Profil — The Roolio Family</title>
 <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-<div class="shell">
-  <aside class="sidebar" id="sidebar"></aside>
-  <main class="main">
-    <div class="pagehead">
-      <h2 id="pagehead-title">Profil</h2>
-      <div class="rule"></div>
-    </div>
+<div id="shell"></div>
 
-    <div class="grid cols-4" id="stats"></div>
-
-    <div class="card">
-      <h3>Mon compte</h3>
-      <form class="entry" id="form-pass">
-        <div class="field"><label>Nouveau mot de passe</label><input type="text" id="p-pass" placeholder="••••••••" required></div>
-        <button class="submit" type="submit">Changer le mot de passe</button>
-      </form>
-    </div>
-  </main>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="../js/firebase-config.js"></script>
 <script src="../js/app.js"></script>
 <script>
-  const membre = initShell('profil', 'Profil');
-  if (membre) {
-    Promise.all([
-      db.ref('actions').get(),
-      db.ref('cambriolages').get(),
-      db.ref('ventes').get(),
-      db.ref('config').get()
-    ]).then(([aSnap, gSnap, vSnap, cSnap]) => {
-      const cfg = cSnap.val() || { taux_action_pct: 25, taux_cambriolage: 700, taux_pochon: 25 };
-      const mine = id => id === membre.id;
+let SESSION;
 
-      const totalActions = entries(aSnap.val()).filter(([id, a]) => mine(a.membre_id))
-        .reduce((s, [id, a]) => s + (a.montant || 0) * (cfg.taux_action_pct / 100), 0);
-      const totalGofast = entries(gSnap.val()).filter(([id, g]) => mine(g.membre_id))
-        .reduce((s, [id, g]) => s + (g.count || 0) * cfg.taux_cambriolage, 0);
-      const totalVente = entries(vSnap.val()).filter(([id, v]) => mine(v.membre_id))
-        .reduce((s, [id, v]) => s + (v.qty || 0) * cfg.taux_pochon, 0);
+function renderContent() {
+  document.getElementById("content").innerHTML = `
+    <h1>Profil</h1>
+    <div class="sigil-rule"></div>
 
-      document.getElementById('stats').innerHTML = `
-        <div class="stat"><div class="v">${fmtMoney(totalActions + totalGofast + totalVente)}</div><div class="l">Mon total</div></div>
-        <div class="stat"><div class="v">${fmtMoney(totalActions)}</div><div class="l">🏴‍☠️ Actions</div></div>
-        <div class="stat"><div class="v">${fmtMoney(totalGofast)}</div><div class="l">🏠 Cambriolage</div></div>
-        <div class="stat"><div class="v">${fmtMoney(totalVente)}</div><div class="l">💊 Vente</div></div>
-      `;
-    });
+    <div class="grid cols-2 mt16">
+      <div class="panel">
+        <div class="panel-head"><h2>Mes informations</h2></div>
+        <p><b style="color:var(--steel)">${SESSION.prenom} ${SESSION.nom || ""}</b></p>
+        <p class="muted small">Grade : ${SESSION.grade || "-"}</p>
+        <p class="muted small">Rôle : ${SESSION.role === 'admin' ? 'Administrateur' : 'Membre'}</p>
 
-    document.getElementById('form-pass').addEventListener('submit', e => {
-      e.preventDefault();
-      const pass = document.getElementById('p-pass').value;
-      if (!pass) return;
-      db.ref('membres/' + membre.id).update({ mot_de_passe: pass }).then(() => {
-        document.getElementById('p-pass').value = '';
-        toast('Mot de passe changé.');
-      });
-    });
+        <div class="fieldset mt24">
+          <label class="l">Nouveau mot de passe</label>
+          <input type="password" id="newPass" placeholder="••••••••">
+          <button class="btn btn-primary mt16" onclick="changerPass()">Changer le mot de passe</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Mes stats — semaine active</h2></div>
+        <div class="grid cols-2">
+          <div><div class="stat-num" id="mesActions">0</div><div class="stat-sub">actions</div></div>
+          <div><div class="stat-num gold" id="mesGains">0 $</div><div class="stat-sub">gains générés</div></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function changerPass() {
+  const val = document.getElementById("newPass").value.trim();
+  if (val.length < 4) { toast("Mot de passe trop court.", true); return; }
+  await db.ref("membres/" + SESSION.id + "/mot_de_passe").set(val);
+  toast("Mot de passe mis à jour.");
+  document.getElementById("newPass").value = "";
+}
+
+let ACTIVE_WEEK_ID = null, ACTIONS_REF = null;
+
+function recomputeSemaine(semaines) {
+  const list = entries(semaines).map(([id, s]) => ({ id, ...s })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const week = list.find(s => s.bloquee !== true) || list[0] || null;
+  const newId = week ? week.id : null;
+  if (newId !== ACTIVE_WEEK_ID) {
+    if (ACTIONS_REF) ACTIONS_REF.off("value", onMesActionsChange);
+    ACTIVE_WEEK_ID = newId;
+    if (ACTIVE_WEEK_ID) {
+      ACTIONS_REF = db.ref("actions/" + ACTIVE_WEEK_ID);
+      ACTIONS_REF.on("value", onMesActionsChange);
+    } else {
+      ACTIONS_REF = null;
+      document.getElementById("mesActions").textContent = 0;
+      document.getElementById("mesGains").textContent = formatMoney(0);
+    }
   }
+}
+
+function onMesActionsChange(snap) {
+  const actions = entries(snap.val() || {}).map(([id, a]) => a).filter(a => a.membre_id === SESSION.id);
+  document.getElementById("mesActions").textContent = actions.length;
+  document.getElementById("mesGains").textContent = formatMoney(actions.reduce((acc, a) => acc + Number(a.gains_totaux || 0), 0));
+}
+
+(async function () {
+  await authReady;
+  SESSION = await initShell("profil", "Profil");
+  if (!SESSION) return;
+  renderContent();
+  db.ref("semaines").on("value", snap => recomputeSemaine(snap.val() || {}));
+})();
 </script>
 </body>
 </html>

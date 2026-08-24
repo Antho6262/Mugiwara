@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotas — The Roolio Family</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="shell"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+let SESSION;
+let DATA = { semaines: {}, membres: {}, visi: {}, actionsDispo: {}, stock: {}, quotasCategorie: {}, actions: {} };
+let ACTIVE_WEEK_ID = null, ACTIONS_REF = null;
+
+function renderContent() {
+  document.getElementById("content").innerHTML = `
+    <h1>Quotas</h1>
+    <div class="sigil-rule"></div>
+    <p class="muted small">Quota global = nombre d'actions attendu par membre sur la semaine active. ${SESSION.role === 'admin' ? 'Modifiable dans Admin → Quotas.' : ''}</p>
+    <div class="panel mt16">
+      <table><thead><tr><th>Membre</th><th>Quota / semaine</th><th>Réalisé</th><th>Progression</th></tr></thead>
+        <tbody id="tblQuotas"><tr class="empty-row"><td colspan="4">Chargement…</td></tr></tbody></table>
+    </div>
+    <div id="quotasProduitsWrap"></div>
+  `;
+}
+
+function barreHtml(pct) {
+  return `<div style="background:var(--bg-2); border-radius:6px; height:8px; overflow:hidden; min-width:90px;">
+    <div style="height:100%; width:${Math.min(100, pct)}%; background:${pct >= 100 ? 'var(--success)' : 'var(--steel)'};"></div></div>`;
+}
+
+function recomputeWeek() {
+  const list = entries(DATA.semaines).map(([id, s]) => ({ id, ...s })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const week = list.find(s => s.bloquee !== true) || list[0] || null;
+  const newWeekId = week ? week.id : null;
+  if (newWeekId !== ACTIVE_WEEK_ID) {
+    if (ACTIONS_REF) ACTIONS_REF.off("value", onActionsChange);
+    ACTIVE_WEEK_ID = newWeekId;
+    DATA.actions = {};
+    if (ACTIVE_WEEK_ID) {
+      ACTIONS_REF = db.ref("actions/" + ACTIVE_WEEK_ID);
+      ACTIONS_REF.on("value", onActionsChange);
+    } else {
+      ACTIONS_REF = null;
+      renderDerived();
+    }
+    return;
+  }
+  renderDerived();
+}
+
+function onActionsChange(snap) {
+  DATA.actions = snap.val() || {};
+  renderDerived();
+}
+
+function renderDerived() {
+  const gradesMasques = new Set(Object.keys(DATA.visi).filter(g => DATA.visi[g] && DATA.visi[g].quotas === false));
+  const membres = entries(DATA.membres).map(([id, m]) => ({ id, ...m })).filter(m => m.actif !== false && !gradesMasques.has(m.grade));
+  const actions = entries(DATA.actions).map(([id, a]) => a);
+
+  document.getElementById("tblQuotas").innerHTML = membres.length ? membres.map(m => {
+    const fait = actions.filter(a => a.membre_id === m.id && a.resultat === "Réussite" && !a.produit_drogue_id).reduce((acc, a) => acc + Number(a.quantite || 0), 0);
+    const quota = Number(m.quota) || 0;
+    const pct = quota > 0 ? Math.min(100, Math.round(fait / quota * 100)) : 0;
+    return `<tr>
+      <td>${m.prenom} ${m.nom || ""}</td>
+      <td>${quota}</td>
+      <td>${fait}</td>
+      <td style="min-width:140px;">
+        <div style="background:var(--bg-2); border-radius:6px; height:8px; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:${pct >= 100 ? 'var(--success)' : 'var(--steel)'};"></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join("") : '<tr class="empty-row"><td colspan="4">Aucun membre</td></tr>';
+
+  const wrap = document.getElementById("quotasProduitsWrap");
+  const catIds = [...new Set(Object.values(DATA.actionsDispo).map(a => a.cat_variable).filter(Boolean))];
+  if (!catIds.length) { wrap.innerHTML = ""; return; }
+
+  wrap.innerHTML = catIds.map(catId => {
+    const cat = DATA.stock[catId];
+    if (!cat) return "";
+    const isLabo = cat.nom === "Labo";
+    const produitIds = new Set(Object.keys(cat.produits || {}));
+    return `<div class="panel">
+      <div class="panel-head"><h2>${cat.emoji || ""} Quota ${cat.nom} (toutes confondues)</h2></div>
+      <table>
+        <thead><tr><th>Membre</th><th>Cible</th><th>Réalisé</th><th>Progression</th></tr></thead>
+        <tbody>
+          ${membres.map(m => {
+            const quota = Number((DATA.quotasCategorie[m.id] || {})[catId]) || 0;
+            const actionsMembre = actions.filter(a => a.membre_id === m.id && produitIds.has(a.produit_drogue_id) && a.resultat === "Réussite");
+            // Labo : chaque production compte pour 1, quelle que soit la quantité fabriquée
+            // (une "fournée" de 150 SporX = 1, pas 150). Les autres catégories comptent la quantité.
+            const fait = isLabo ? actionsMembre.length : actionsMembre.reduce((acc, a) => acc + Number(a.quantite || 0), 0);
+            const pct = quota > 0 ? Math.round(fait / quota * 100) : 0;
+            return `<tr><td>${m.prenom}</td><td>${quota}</td><td>${fait}</td><td>${barreHtml(pct)}</td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>`;
+  }).join("");
+}
+
+(async function () {
+  await authReady;
+  SESSION = await initShell("quotas", "Quotas");
+  if (!SESSION) return;
+  renderContent();
+
+  db.ref("semaines").on("value", snap => { DATA.semaines = snap.val() || {}; recomputeWeek(); });
+  db.ref("membres").on("value", snap => { DATA.membres = snap.val() || {}; renderDerived(); });
+  db.ref("visibilite_grades").on("value", snap => { DATA.visi = snap.val() || {}; renderDerived(); });
+  db.ref("actions_dispo").on("value", snap => { DATA.actionsDispo = snap.val() || {}; renderDerived(); });
+  db.ref("stock").on("value", snap => { DATA.stock = snap.val() || {}; renderDerived(); });
+  db.ref("quotas_categorie").on("value", snap => { DATA.quotasCategorie = snap.val() || {}; renderDerived(); });
+})();
+</script>
+</body>
+</html>

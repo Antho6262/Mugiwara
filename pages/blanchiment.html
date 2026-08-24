@@ -3,101 +3,102 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Les Mugiwara — Blanchiment</title>
+<title>Blanchiment — The Roolio Family</title>
 <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
-<div class="shell">
-  <aside class="sidebar" id="sidebar"></aside>
-  <main class="main">
-    <div class="pagehead">
-      <h2 id="pagehead-title">Blanchiment</h2>
-      <div class="rule"></div>
-    </div>
+<div id="shell"></div>
 
-    <div class="grid cols-3" id="soldes"></div>
-
-    <div class="card">
-      <h3>Nouveau blanchiment</h3>
-      <form class="entry" id="form-blanch">
-        <div class="field"><label>Montant sale à blanchir ($)</label><input type="number" id="b-montant" min="0" step="1" required></div>
-        <div class="field"><label>Description</label><input type="text" id="b-desc" placeholder="Ex: via Cash Boissons"></div>
-        <button class="submit" type="submit">Blanchir</button>
-      </form>
-      <div class="note-hint" id="b-hint"></div>
-    </div>
-
-    <div class="card">
-      <h3>Historique</h3>
-      <table>
-        <thead><tr><th>Description</th><th>Sale investi</th><th>Frais</th><th>Propre reçu</th><th>Par</th><th></th></tr></thead>
-        <tbody id="b-table"></tbody>
-      </table>
-    </div>
-  </main>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="../js/firebase-config.js"></script>
 <script src="../js/app.js"></script>
 <script>
-  const membre = initShell('blanchiment', 'Blanchiment');
-  if (membre) {
-    let membresMap = {}, taux = 20;
+let SESSION, TAUX = 35;
 
-    db.ref('membres').on('value', s => { membresMap = Object.fromEntries(entries(s.val())); });
-    db.ref('config/blanchiment_taux').on('value', s => {
-      taux = s.val() ?? 20;
-      document.getElementById('b-hint').textContent = `Taux de frais actuel : ${taux}% (retenu au passage sale → propre).`;
-    });
+function renderContent() {
+  document.getElementById("content").innerHTML = `
+    <h1>Blanchiment</h1>
+    <div class="sigil-rule"></div>
 
-    function refreshSoldes() {
-      computeSoldes().then(({ solde_sale, solde_propre }) => {
-        document.getElementById('soldes').innerHTML = `
-          <div class="stat"><div class="v">${fmtMoney(solde_sale)}</div><div class="l">🕶️ Argent sale</div></div>
-          <div class="stat"><div class="v">${fmtMoney(solde_propre)}</div><div class="l">💵 Argent propre</div></div>
-          <div class="stat"><div class="v">${taux}%</div><div class="l">Taux de frais</div></div>
-        `;
-      });
-    }
-    refreshSoldes();
+    <div class="panel mt16">
+      <div class="panel-head"><h2>Nouveau blanchiment — taux actuel : <span id="tauxLabel">35</span>% de frais</h2></div>
+      <div class="row">
+        <div><label class="l">Description</label><input type="text" id="bDesc" placeholder="Ex: Blanchiment via le pressing"></div>
+        <div><label class="l">Montant sale ($)</label><input type="number" id="bMontant" oninput="calcApercu()"></div>
+        <div style="display:flex;flex-direction:column;"><label class="l">Récupéré (propre)</label><div class="stat-num gold" id="apercuPropre" style="font-size:20px;">0 $</div></div>
+      </div>
+      <button class="btn btn-primary mt16" onclick="blanchir()">Lancer le blanchiment</button>
+      <p class="small muted mt8">Le taux de frais se configure dans Admin → Config.</p>
+    </div>
 
-    document.getElementById('form-blanch').addEventListener('submit', e => {
-      e.preventDefault();
-      const montant_sale = parseFloat(document.getElementById('b-montant').value);
-      const description = document.getElementById('b-desc').value.trim();
-      if (isNaN(montant_sale) || montant_sale <= 0) return;
-      const frais = montant_sale * (taux / 100);
-      const montant_propre = montant_sale - frais;
-      db.ref('blanchiments/' + uid()).set({
-        montant_sale, frais, montant_propre, description,
-        responsable: membre.prenom, date: new Date().toISOString()
-      }).then(refreshSoldes);
-      document.getElementById('form-blanch').reset();
-    });
+    <div class="panel">
+      <div class="panel-head"><h2>Historique</h2></div>
+      <table><thead><tr><th>Date</th><th>Description</th><th>Sale</th><th>Frais</th><th>Propre récupéré</th><th>Par</th>${SESSION.role === 'admin' ? '<th></th>' : ''}</tr></thead>
+        <tbody id="tblHisto"><tr class="empty-row"><td colspan="${SESSION.role === 'admin' ? 7 : 6}">Chargement…</td></tr></tbody></table>
+    </div>
+  `;
+}
 
-    db.ref('blanchiments').on('value', snap => {
-      const rows = entries(snap.val());
-      const tbody = document.getElementById('b-table');
-      tbody.innerHTML = rows.length === 0
-        ? `<tr><td colspan="6" class="empty">Aucun blanchiment enregistré.</td></tr>`
-        : rows.slice().reverse().map(([id, b]) => `
-            <tr>
-              <td>${b.description || '—'}</td>
-              <td>${fmtMoney(b.montant_sale)}</td>
-              <td style="color:var(--danger);">-${fmtMoney(b.frais)}</td>
-              <td class="amt">${fmtMoney(b.montant_propre)}</td>
-              <td>${b.responsable || '—'}</td>
-              <td><button class="del" data-id="${id}">✕</button></td>
-            </tr>`).join('');
-      refreshSoldes();
-    });
+function calcApercu() {
+  const montant = Number(document.getElementById("bMontant").value) || 0;
+  const propre = Math.round(montant * (1 - TAUX / 100));
+  document.getElementById("apercuPropre").textContent = formatMoney(propre);
+}
 
-    document.body.addEventListener('click', e => {
-      if (e.target.matches('#b-table .del')) db.ref('blanchiments/' + e.target.dataset.id).remove();
-    });
-  }
+async function blanchir() {
+  const desc = document.getElementById("bDesc").value.trim() || "Blanchiment";
+  const montant = Number(document.getElementById("bMontant").value) || 0;
+  if (montant <= 0) { toast("Montant invalide.", true); return; }
+  const frais = Math.round(montant * TAUX / 100);
+  const propre = montant - frais;
+  const date = todayISO();
+  const id = uid();
+
+  await db.ref("blanchiments/" + id).set({ date, description: desc, montant_sale: montant, montant_propre: propre, frais, responsable: SESSION.prenom, createdAt: Date.now() });
+  await db.ref("argent/sale/" + id).set({ date, description: desc, type: "Sortie", montant, responsable: SESSION.prenom, createdAt: Date.now() });
+  await db.ref("argent/propre/" + id).set({ date, description: desc + " (blanchi)", type: "Entrée", montant: propre, responsable: SESSION.prenom, createdAt: Date.now() });
+
+  toast("Blanchiment effectué : " + formatMoney(propre) + " récupérés.");
+  document.getElementById("bDesc").value = ""; document.getElementById("bMontant").value = ""; calcApercu();
+}
+
+async function supprimerBlanchiment(id) {
+  if (!confirm("Annuler ce blanchiment ? Les mouvements d'argent associés seront supprimés.")) return;
+  await db.ref("blanchiments/" + id).remove();
+  await db.ref("argent/sale/" + id).remove();
+  await db.ref("argent/propre/" + id).remove();
+  toast("Blanchiment annulé.");
+}
+
+let HISTO_BLANCHIMENTS = {};
+function renderHisto() {
+  const list = entries(HISTO_BLANCHIMENTS).map(([id, b]) => ({ id, ...b })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const isAdmin = SESSION.role === "admin";
+  document.getElementById("tblHisto").innerHTML = list.length ? list.map(b => `
+    <tr><td>${b.date}</td><td>${b.description}</td><td>${formatMoney(b.montant_sale)}</td><td class="muted">${formatMoney(b.frais)}</td><td class="mono" style="color:var(--gold)">${formatMoney(b.montant_propre)}</td><td>${b.responsable}</td>
+    ${isAdmin ? `<td><span class="btn btn-sm btn-danger" onclick="supprimerBlanchiment('${b.id}')">Annuler</span></td>` : ""}
+    </tr>
+  `).join("") : `<tr class="empty-row"><td colspan="${isAdmin ? 7 : 6}">Aucun blanchiment</td></tr>`;
+}
+
+(async function () {
+  await authReady;
+  SESSION = await initShell("blanchiment", "Blanchiment");
+  if (!SESSION) return;
+  const snapCfg = await db.ref("config/blanchiment_taux").once("value");
+  TAUX = Number(snapCfg.val()) || 35;
+  renderContent();
+  document.getElementById("tauxLabel").textContent = TAUX;
+  db.ref("blanchiments").on("value", snap => { HISTO_BLANCHIMENTS = snap.val() || {}; renderHisto(); });
+  db.ref("config/blanchiment_taux").on("value", snap => {
+    TAUX = Number(snap.val()) || 35;
+    const lbl = document.getElementById("tauxLabel");
+    if (lbl) lbl.textContent = TAUX;
+    calcApercu();
+  });
+})();
 </script>
 </body>
 </html>
