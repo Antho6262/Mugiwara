@@ -18,6 +18,7 @@
     <div class="tabs">
       <button data-tab="semaines" class="active">🗓️ Semaines</button>
       <button data-tab="taux">💰 Taux</button>
+      <button data-tab="tresorerie">💵 Trésorerie</button>
       <button data-tab="quotas">📋 Quotas</button>
       <button data-tab="membres">👒 Membres</button>
       <button data-tab="stockadmin">📦 Stock</button>
@@ -54,6 +55,35 @@
         </div>
         <div class="note-hint">Action = % du montant total saisi. Cambriolage/Vente/Labo = tarif fixe par unité, indépendant du montant total (qui appartient entièrement au groupe).</div>
         <div style="margin-top:16px;"><button class="submit" id="cfg-save">Enregistrer</button></div>
+      </div>
+    </div>
+
+    <!-- TRÉSORERIE -->
+    <div class="tabpanel" id="panel-tresorerie">
+      <div class="grid cols-3" id="tresorerie-soldes" style="margin-bottom:18px;"></div>
+
+      <div class="card">
+        <h3>Ajustement manuel</h3>
+        <form class="entry" id="form-ajustement">
+          <div class="field"><label>Type</label>
+            <select id="tr-type"><option value="Entrée">➕ Entrée (ajouter)</option><option value="Sortie">➖ Sortie (retirer)</option></select>
+          </div>
+          <div class="field"><label>Argent</label>
+            <select id="tr-argent"><option value="sale">🕶️ Sale</option><option value="propre">💵 Propre</option></select>
+          </div>
+          <div class="field"><label>Montant ($)</label><input type="number" id="tr-montant" min="0" step="1" required></div>
+          <div class="field"><label>Description</label><input type="text" id="tr-desc" placeholder="Ex: remise à zéro, argent trouvé..."></div>
+          <button class="submit" type="submit">Enregistrer</button>
+        </form>
+        <div class="note-hint">Sert à corriger le solde à la main (erreur, remise à niveau avec l'argent réel du groupe...). N'affecte pas le tracker ni la paye, seulement le solde global.</div>
+      </div>
+
+      <div class="card">
+        <h3>Historique des ajustements</h3>
+        <table>
+          <thead><tr><th>Type</th><th>Argent</th><th>Montant</th><th>Description</th><th>Par</th><th>Date</th><th></th></tr></thead>
+          <tbody id="tresorerie-liste"></tbody>
+        </table>
       </div>
     </div>
 
@@ -164,6 +194,67 @@
       await ensureActiveWeek();
       toast('Semaine bloquée, nouvelle semaine créée.');
       renderSemaines();
+    });
+
+    // ---- Trésorerie ----
+    function refreshTresorerieSoldes() {
+      computeSoldes().then(({ solde_sale, solde_propre }) => {
+        document.getElementById('tresorerie-soldes').innerHTML = `
+          <div class="stat"><div class="v">${fmtMoney(solde_sale)}</div><div class="l">🕶️ Argent sale</div></div>
+          <div class="stat"><div class="v">${fmtMoney(solde_propre)}</div><div class="l">💵 Argent propre</div></div>
+          <div class="stat"><div class="v">${fmtMoney(solde_sale + solde_propre)}</div><div class="l">🧭 Trésor total</div></div>
+        `;
+      });
+    }
+    refreshTresorerieSoldes();
+
+    document.getElementById('form-ajustement').addEventListener('submit', e => {
+      e.preventDefault();
+      const type = document.getElementById('tr-type').value;
+      const argent = document.getElementById('tr-argent').value; // 'sale' ou 'propre'
+      const montant = parseFloat(document.getElementById('tr-montant').value);
+      const description = document.getElementById('tr-desc').value.trim();
+      if (isNaN(montant) || montant <= 0) return;
+      const node = argent === 'propre' ? 'argent_propre' : 'argent_sale';
+      db.ref(node + '/' + uid()).set({
+        type, montant, description, responsable: membre.prenom, date: new Date().toISOString()
+      }).then(() => {
+        toast('Ajustement enregistré.');
+        document.getElementById('form-ajustement').reset();
+        refreshTresorerieSoldes();
+      });
+    });
+
+    function renderTresorerieListe() {
+      Promise.all([db.ref('argent_sale').get(), db.ref('argent_propre').get()]).then(([saleSnap, propreSnap]) => {
+        const rows = [
+          ...entries(saleSnap.val()).map(([id, m]) => ({ id, node: 'argent_sale', argentLabel: '🕶️ Sale', ...m })),
+          ...entries(propreSnap.val()).map(([id, m]) => ({ id, node: 'argent_propre', argentLabel: '💵 Propre', ...m })),
+        ].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        document.getElementById('tresorerie-liste').innerHTML = rows.length === 0
+          ? `<tr><td colspan="7" class="empty">Aucun ajustement manuel pour le moment.</td></tr>`
+          : rows.map(r => `
+              <tr>
+                <td>${r.type === 'Sortie' ? '➖ Sortie' : '➕ Entrée'}</td>
+                <td>${r.argentLabel}</td>
+                <td class="amt">${fmtMoney(r.montant)}</td>
+                <td>${r.description || '—'}</td>
+                <td>${r.responsable || '—'}</td>
+                <td>${fmtDateHeure(r.date)}</td>
+                <td><button class="del" data-id="${r.id}" data-node="${r.node}">✕</button></td>
+              </tr>`).join('');
+      });
+    }
+    renderTresorerieListe();
+
+    document.body.addEventListener('click', e => {
+      if (e.target.matches('#tresorerie-liste .del')) {
+        db.ref(e.target.dataset.node + '/' + e.target.dataset.id).remove().then(() => {
+          renderTresorerieListe();
+          refreshTresorerieSoldes();
+        });
+      }
     });
 
     // grades du formulaire membre
