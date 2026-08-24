@@ -20,11 +20,11 @@ const db = firebase.database();
 const GRADES_DEFAUT = [
   { id: 'fondateur', nom: 'Fondateur',  emoji: '🧭', ordre: 0 },
   { id: 'lead',      nom: 'Lead',       emoji: '👑', ordre: 1 },
-  { id: 'colead',    nom: 'Co Lead',    emoji: '☸️', ordre: 2 },
+  { id: 'colead',    nom: 'Co Lead',    emoji: '<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiIgd2lkdGg9IjM2IiBoZWlnaHQ9IjM2Ij4KICA8cmVjdCB4PSIxIiB5PSIxIiB3aWR0aD0iMzQiIGhlaWdodD0iMzQiIHJ4PSI3IiBmaWxsPSIjMWExYTFhIi8+CiAgPGcgZmlsbD0iI2ZmZmZmZiI+CiAgICA8cGF0aCBkPSJNMTggNi41Yy00LjcgMC04LjMgMy40LTguMyA3LjggMCAyLjYgMS4zIDQuNiAzLjEgNnYyLjZjMCAuNi41IDEuMSAxLjEgMS4xaDEuMXYyLjFjMCAuNS40LjkuOS45aC42di0zaDF2M2gxdi0zaDF2M2guNmMuNSAwIC45LS40LjktLjl2LTIuMWgxLjFjLjYgMCAxLjEtLjUgMS4xLTEuMXYtMi42YzEuOC0xLjQgMy4xLTMuNCAzLjEtNiAwLTQuNC0zLjYtNy44LTguMy03Ljh6Ii8+CiAgICA8ZWxsaXBzZSBjeD0iMTQuMyIgY3k9IjE0LjYiIHJ4PSIxLjkiIHJ5PSIyLjMiIGZpbGw9IiMxYTFhMWEiLz4KICAgIDxlbGxpcHNlIGN4PSIyMS43IiBjeT0iMTQuNiIgcng9IjEuOSIgcnk9IjIuMyIgZmlsbD0iIzFhMWExYSIvPgogICAgPHBhdGggZD0iTTE1LjcgMTkuM2g0LjZsLS45IDEuN2gtMi44eiIgZmlsbD0iIzFhMWExYSIvPgogIDwvZz4KICA8ZyBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMi4xIiBzdHJva2UtbGluZWNhcD0icm91bmQiPgogICAgPGxpbmUgeDE9IjYiIHkxPSIyNCIgeDI9IjMwIiB5Mj0iMzEuNSIvPgogICAgPGxpbmUgeDE9IjMwIiB5MT0iMjQiIHgyPSI2IiB5Mj0iMzEuNSIvPgogIDwvZz4KPC9zdmc+Cg==" alt="Co Lead" style="width:1.15em;height:1.15em;vertical-align:-0.25em;border-radius:3px;">', ordre: 2 },
   { id: 'brasdroit', nom: 'Bras Droit', emoji: '⚔️', ordre: 3 },
   { id: 'amiral',    nom: 'Amiral',     emoji: '⚓', ordre: 4 },
   { id: 'sergent',   nom: 'Sergent',    emoji: '🎖️', ordre: 5 },
-  { id: 'membre',    nom: 'Membre',     emoji: '🏴‍☠️', ordre: 6 },
+  { id: 'membre',    nom: 'Membre',     emoji: '🗡️', ordre: 6 },
   { id: 'recrue',    nom: 'Recrue',     emoji: '👒', ordre: 7 },
 ];
 
