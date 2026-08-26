@@ -15,29 +15,59 @@
       <div class="rule"></div>
     </div>
 
-    <div class="card">
-      <h3>Nouvelle transaction</h3>
-      <form class="entry" id="form-tx">
-        <div class="field"><label>Type</label>
-          <select id="t-type"><option value="vente">Vente</option><option value="achat">Achat</option></select>
-        </div>
-        <div class="field"><label>Produit</label><input type="text" id="t-produit" placeholder="Nom du produit" required></div>
-        <div class="field"><label>Quantité</label><input type="number" id="t-qty" min="1" step="1" value="1" required></div>
-        <div class="field"><label>Prix total ($)</label><input type="number" id="t-prix" min="0" step="1" required></div>
-        <div class="field"><label>Argent</label>
-          <select id="t-typeargent"><option value="sale">Sale</option><option value="propre">Propre</option></select>
-        </div>
-        <div class="field"><label>Notes</label><input type="text" id="t-notes" placeholder="optionnel"></div>
-        <button class="submit" type="submit">Enregistrer</button>
-      </form>
+    <div class="tabs">
+      <button data-tab="achat" class="active">🛒 Achat</button>
+      <button data-tab="vente">💸 Vente</button>
     </div>
 
-    <div class="card">
-      <h3>Historique</h3>
-      <table>
-        <thead><tr><th>Membre</th><th>Type</th><th>Produit</th><th>Qté</th><th>Prix</th><th>Argent</th><th>Notes</th><th></th></tr></thead>
-        <tbody id="tx-table"></tbody>
-      </table>
+    <!-- ACHAT -->
+    <div class="tabpanel active" id="panel-achat">
+      <div class="card">
+        <h3>Nouvel achat</h3>
+        <form class="entry" id="form-achat">
+          <div class="field"><label>Produit</label><input type="text" id="a-produit" placeholder="Nom du produit" required></div>
+          <div class="field"><label>Quantité</label><input type="number" id="a-qty" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Prix total ($)</label><input type="number" id="a-prix" min="0" step="1" required></div>
+          <div class="field"><label>Argent</label>
+            <select id="a-typeargent"><option value="sale">Sale</option><option value="propre">Propre</option></select>
+          </div>
+          <div class="field"><label>Notes</label><input type="text" id="a-notes" placeholder="optionnel"></div>
+          <button class="submit" type="submit">Enregistrer</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Historique des achats</h3>
+        <table>
+          <thead><tr><th>Membre</th><th>Produit</th><th>Qté</th><th>Prix</th><th>Argent</th><th>Notes</th><th>Date</th><th></th></tr></thead>
+          <tbody id="achat-table"></tbody>
+        </table>
+        <div class="grand" id="achat-grand"></div>
+      </div>
+    </div>
+
+    <!-- VENTE -->
+    <div class="tabpanel" id="panel-vente">
+      <div class="card">
+        <h3>Nouvelle vente</h3>
+        <form class="entry" id="form-vente">
+          <div class="field"><label>Produit</label><input type="text" id="v-produit" placeholder="Nom du produit" required></div>
+          <div class="field"><label>Quantité</label><input type="number" id="v-qty" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Prix total ($)</label><input type="number" id="v-prix" min="0" step="1" required></div>
+          <div class="field"><label>Argent</label>
+            <select id="v-typeargent"><option value="sale">Sale</option><option value="propre">Propre</option></select>
+          </div>
+          <div class="field"><label>Notes</label><input type="text" id="v-notes" placeholder="optionnel"></div>
+          <button class="submit" type="submit">Enregistrer</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Historique des ventes</h3>
+        <table>
+          <thead><tr><th>Membre</th><th>Produit</th><th>Qté</th><th>Prix</th><th>Argent</th><th>Notes</th><th>Date</th><th></th></tr></thead>
+          <tbody id="vente-table"></tbody>
+        </table>
+        <div class="grand" id="vente-grand"></div>
+      </div>
     </div>
   </main>
 </div>
@@ -52,46 +82,62 @@
     let membresMap = {};
     db.ref('membres').on('value', s => { membresMap = Object.fromEntries(entries(s.val())); });
 
-    document.getElementById('form-tx').addEventListener('submit', e => {
-      e.preventDefault();
-      const type = document.getElementById('t-type').value;
-      const produit_nom = document.getElementById('t-produit').value.trim();
-      const quantite = parseInt(document.getElementById('t-qty').value, 10);
-      const prix = parseFloat(document.getElementById('t-prix').value);
-      const type_argent = document.getElementById('t-typeargent').value;
-      const notes = document.getElementById('t-notes').value.trim();
-      if (!produit_nom || isNaN(quantite) || isNaN(prix)) return;
-      db.ref('transactions/' + uid()).set({
-        type, produit_nom, quantite, prix, type_argent, notes,
-        membre_id: membre.id, date: new Date().toISOString()
+    document.querySelectorAll('.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
       });
-      document.getElementById('form-tx').reset();
-      document.getElementById('t-qty').value = '1';
     });
 
-    db.ref('transactions').on('value', snap => {
-      const rows = entries(snap.val());
-      const tbody = document.getElementById('tx-table');
-      tbody.innerHTML = rows.length === 0
-        ? `<tr><td colspan="8" class="empty">Aucune transaction enregistrée.</td></tr>`
-        : rows.slice().reverse().map(([id, t]) => {
-            const m = membresMap[t.membre_id];
-            const g = m ? gradeInfo(m.grade) : null;
-            return `<tr>
-              <td>${g ? g.emoji : '❓'} ${m ? m.prenom : '?'}</td>
-              <td>${t.type === 'vente' ? '💸 Vente' : '🛒 Achat'}</td>
-              <td>${t.produit_nom}</td>
-              <td>${t.quantite}</td>
-              <td class="amt">${fmtMoney(t.prix)}</td>
-              <td>${t.type_argent === 'propre' ? '💵 Propre' : '🕶️ Sale'}</td>
-              <td>${t.notes || '—'}</td>
-              <td><button class="del" data-id="${id}">✕</button></td>
-            </tr>`;
-          }).join('');
-    });
+    function setupTransactionType(prefix, type) {
+      document.getElementById('form-' + prefix).addEventListener('submit', e => {
+        e.preventDefault();
+        const produit_nom = document.getElementById(prefix + '-produit').value.trim();
+        const quantite = parseInt(document.getElementById(prefix + '-qty').value, 10);
+        const prix = parseFloat(document.getElementById(prefix + '-prix').value);
+        const type_argent = document.getElementById(prefix + '-typeargent').value;
+        const notes = document.getElementById(prefix + '-notes').value.trim();
+        if (!produit_nom || isNaN(quantite) || isNaN(prix)) return;
+        db.ref('transactions/' + uid()).set({
+          type, produit_nom, quantite, prix, type_argent, notes,
+          membre_id: membre.id, date: new Date().toISOString()
+        });
+        document.getElementById('form-' + prefix).reset();
+        document.getElementById(prefix + '-qty').value = '1';
+      });
+
+      db.ref('transactions').on('value', snap => {
+        const rows = entries(snap.val()).filter(([, t]) => t.type === type);
+        const tbody = document.getElementById(prefix + '-table');
+        let grand = 0;
+        tbody.innerHTML = rows.length === 0
+          ? `<tr><td colspan="8" class="empty">Aucun${type === 'achat' ? '' : 'e'} ${type} enregistré${type === 'achat' ? '' : 'e'}.</td></tr>`
+          : rows.slice().reverse().map(([id, t]) => {
+              const m = membresMap[t.membre_id];
+              const g = m ? gradeInfo(m.grade) : null;
+              grand += (t.prix || 0);
+              return `<tr>
+                <td>${g ? g.emoji : '❓'} ${m ? m.prenom : '?'}</td>
+                <td>${t.produit_nom}</td>
+                <td>${t.quantite}</td>
+                <td class="amt">${fmtMoney(t.prix)}</td>
+                <td>${t.type_argent === 'propre' ? '💵 Propre' : '🕶️ Sale'}</td>
+                <td>${t.notes || '—'}</td>
+                <td>${fmtDateHeure(t.date)}</td>
+                <td><button class="del" data-id="${id}">✕</button></td>
+              </tr>`;
+            }).join('');
+        document.getElementById(prefix + '-grand').textContent = 'Total ' + type + ' : ' + fmtMoney(grand);
+      });
+    }
+
+    setupTransactionType('achat', 'achat');
+    setupTransactionType('vente', 'vente');
 
     document.body.addEventListener('click', e => {
-      if (e.target.matches('#tx-table .del')) db.ref('transactions/' + e.target.dataset.id).remove();
+      if (e.target.matches('.del')) db.ref('transactions/' + e.target.dataset.id).remove();
     });
   }
 </script>
