@@ -110,12 +110,12 @@ button.submit{
   box-shadow:0 3px 10px rgba(0,0,0,.5), inset 0 0 0 1px rgba(216,173,82,.25);
 }
 button.submit:hover{filter:brightness(1.15);}
-button.ghost{
+button.ghost, a.ghost{
   background:none;border:1px solid var(--line);color:var(--muted);
   padding:9px 16px;border-radius:var(--radius);cursor:pointer;
   font-family:'IM Fell English SC',serif;letter-spacing:1px;font-size:13px;
 }
-button.ghost:hover{border-color:var(--gold);color:var(--cream);}
+button.ghost:hover, a.ghost:hover{border-color:var(--gold);color:var(--cream);}
 
 /* ---------- SHELL (sidebar + contenu) ---------- */
 .shell{display:flex;min-height:100vh;}
