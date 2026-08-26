@@ -317,3 +317,95 @@ async function computeGainsSemaine(semaineId) {
 
   return { gainsParMembre: parMembre, payeParMembre, aPayerParMembre };
 }
+
+// ------------------------------------------------------------
+// Petites célébrations : confettis + son de pièces.
+// Aucune dépendance externe (canvas + Web Audio générés à la volée).
+// ------------------------------------------------------------
+function fireConfetti() {
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  const colors = ['#d8ad52', '#8b1f24', '#ecdfc0', '#c99a3d', '#5c7a4a'];
+  const pieces = Array.from({ length: 140 }, () => ({
+    x: Math.random() * canvas.width,
+    y: -20 - Math.random() * canvas.height * 0.3,
+    r: 4 + Math.random() * 5,
+    vy: 2 + Math.random() * 3,
+    vx: -2 + Math.random() * 4,
+    rot: Math.random() * 360,
+    vrot: -8 + Math.random() * 16,
+    color: colors[Math.floor(Math.random() * colors.length)],
+  }));
+
+  let frame = 0;
+  const maxFrames = 130;
+  function tick() {
+    frame++;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 0.6);
+      ctx.restore();
+    });
+    if (frame < maxFrames) {
+      requestAnimationFrame(tick);
+    } else {
+      canvas.remove();
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+function playCoinSound() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const notes = [1046.5, 1318.5, 1568]; // do-mi-sol aigus, façon "cha-ching"
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.07;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+    setTimeout(() => ctx.close(), 900);
+  } catch (e) {
+    console.error('playCoinSound', e); // jamais bloquant
+  }
+}
+
+function celebrer() {
+  fireConfetti();
+  playCoinSound();
+}
+
+// ------------------------------------------------------------
+// Capitaine du jour — surprise cosmétique, change chaque jour,
+// aucun impact mécanique. Déterministe par date (même résultat
+// pour tout le monde le même jour).
+// ------------------------------------------------------------
+function capitaineDuJour(membresActifs) {
+  if (!membresActifs || membresActifs.length === 0) return null;
+  const ids = membresActifs.map(([id]) => id).sort(); // ordre stable
+  const jourSeed = new Date().toISOString().slice(0, 10); // ex: 2026-08-26
+  let hash = 0;
+  for (let i = 0; i < jourSeed.length; i++) hash = (hash * 31 + jourSeed.charCodeAt(i)) >>> 0;
+  const index = hash % ids.length;
+  const id = ids[index];
+  return membresActifs.find(([mid]) => mid === id) || null;
+}

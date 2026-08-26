@@ -183,6 +183,20 @@
         </tr>`;
       }).join('');
       document.getElementById('quota-body').innerHTML = rows || `<tr><td colspan="6" class="empty">Aucun membre.</td></tr>`;
+
+      // Petite fête si quelqu'un vient d'atteindre un objectif (une seule fois par membre/catégorie/semaine)
+      Object.entries(membres).filter(([,m]) => m.actif !== false && !m.invisible).forEach(([id]) => {
+        ['actions', 'vente', 'labo', 'fleeca', 'armurerie'].forEach(cat => {
+          const cible = quotas[cat] || 0;
+          const fait = compteCat[cat][id] || 0;
+          if (cible <= 0 || fait < cible) return;
+          const cle = `quota_ok_${semaineFiltre || 'all'}_${cat}_${id}`;
+          if (!sessionStorage.getItem(cle)) {
+            sessionStorage.setItem(cle, '1');
+            if (id === membre.id) celebrer(); // ne fête que pour la personne connectée
+          }
+        });
+      });
     }
 
     Promise.all([

@@ -116,7 +116,11 @@
         if (!ok) return;
         db.ref('payes/' + uid()).set({
           membre_id, montant, par: membre.prenom, date: new Date().toISOString(), semaine_id: semaineSelectionnee
-        }).then(() => { toast('Paiement enregistré pour ' + nomSemaine(semaineSelectionnee) + '.'); refresh(); renderHistorique(); });
+        }).then(() => {
+          celebrer();
+          toast('Paiement enregistré pour ' + nomSemaine(semaineSelectionnee) + '.');
+          refresh(); renderHistorique();
+        });
       }
     });
 

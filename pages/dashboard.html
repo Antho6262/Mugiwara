@@ -16,6 +16,13 @@
     </div>
     <div class="note-hint" style="margin-bottom:16px;">🗓️ Payes le dimanche à 19h par un haut gradé (Lead → Sergent) — argent sale uniquement. 🏆 Récompenses pour les 3 meilleurs de la semaine.</div>
 
+    <div class="card" id="capitaine-card" style="display:none;text-align:center;"></div>
+
+    <div class="card">
+      <h3>🗺️ Route vers Raftel</h3>
+      <div id="carte-tresor"></div>
+    </div>
+
     <div class="card">
       <div class="field" style="max-width:340px;">
         <label>Semaine affichée</label>
@@ -166,7 +173,68 @@
 
       dernieresListes = { membres, cfg, actions, gofasts, ventes, labos, fleecas, armureries };
       chargerSemaines().then(renderTout);
+
+      // Capitaine du jour (surprise cosmétique)
+      const membresActifs = Object.entries(membres).filter(([id, m]) => m.actif !== false && !m.invisible);
+      const capitaine = capitaineDuJour(membresActifs);
+      if (capitaine) {
+        const [, m] = capitaine;
+        const g = gradeInfo(m.grade);
+        document.getElementById('capitaine-card').style.display = 'block';
+        document.getElementById('capitaine-card').innerHTML =
+          `<div style="font-family:'IM Fell English SC',serif;font-size:12px;letter-spacing:2px;color:var(--muted);">CAPITAINE DU JOUR</div>
+           <div style="font-family:'Pirata One',cursive;font-size:28px;color:var(--gold);margin-top:4px;">👑 ${m.prenom} ${g.emoji}</div>`;
+      }
+
+      // Carte au trésor — total historique (toutes semaines, hors échecs)
+      const totalHistorique =
+        actions.reduce((s, [,a]) => s + (a.montant || 0), 0) +
+        gofasts.reduce((s, [,g]) => s + (g.montant || 0), 0) +
+        ventes.reduce((s, [,v]) => s + (v.montant || 0), 0) +
+        labos.reduce((s, [,l]) => s + (l.montant || 0), 0) +
+        fleecas.reduce((s, [,r]) => s + (r.montant || 0), 0) +
+        armureries.reduce((s, [,r]) => s + (r.montant || 0), 0);
+      renderCarteTresor(totalHistorique);
     });
+
+    function renderCarteTresor(total) {
+      const etapes = [
+        { seuil: 0,       label: 'Départ',   emoji: '⚓' },
+        { seuil: 5000,    label: '$5k',      emoji: '🏝️' },
+        { seuil: 20000,   label: '$20k',     emoji: '🏝️' },
+        { seuil: 75000,   label: '$75k',     emoji: '🌋' },
+        { seuil: 250000,  label: '$250k',    emoji: '🗿' },
+        { seuil: 750000,  label: 'Raftel',   emoji: '🏴‍☠️' },
+      ];
+      const positions = etapes.map((e, i) => (i / (etapes.length - 1)) * 100);
+
+      // position du bateau : interpolation entre les deux étapes encadrant le total
+      let pct = positions[0];
+      for (let i = 0; i < etapes.length - 1; i++) {
+        const a = etapes[i], b = etapes[i + 1];
+        if (total >= a.seuil && total <= b.seuil) {
+          const ratio = b.seuil === a.seuil ? 1 : (total - a.seuil) / (b.seuil - a.seuil);
+          pct = positions[i] + ratio * (positions[i + 1] - positions[i]);
+          break;
+        }
+        if (total > etapes[etapes.length - 1].seuil) pct = 100;
+      }
+
+      const iles = etapes.map((e, i) => `
+        <div class="tresor-ile ${total >= e.seuil ? 'atteinte' : ''}" style="left:${positions[i]}%;">
+          <span>${e.emoji}</span>
+          <span class="label">${e.label}</span>
+        </div>`).join('');
+
+      document.getElementById('carte-tresor').innerHTML = `
+        <div class="tresor-route">
+          <div class="tresor-ligne"></div>
+          ${iles}
+          <div class="tresor-bateau" style="left:${pct}%;">⛵</div>
+        </div>
+        <div class="tresor-progres">${fmtMoney(total)} gagnés au total — cap sur Raftel 🏴‍☠️</div>
+      `;
+    }
 
     computeSoldes().then(({ solde_sale, solde_propre }) => {
       document.getElementById('soldes').innerHTML = `
