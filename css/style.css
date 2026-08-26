@@ -271,6 +271,18 @@ tr:last-child td{border-bottom:none;}
   text-align:center;font-family:'Pirata One',cursive;font-size:20px;color:var(--sunset-1);margin-top:6px;
 }
 
+/* Compte à rebours */
+.cd-bloc{display:flex;flex-direction:column;align-items:center;min-width:64px;}
+.cd-bloc .n{
+  font-family:'Pirata One',cursive;font-size:34px;color:var(--gold);
+  background:var(--card-2);border:1px solid var(--line);border-radius:8px;
+  padding:8px 14px;min-width:64px;text-align:center;
+}
+.cd-bloc .l{
+  font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:1.5px;
+  color:var(--muted);text-transform:uppercase;margin-top:6px;
+}
+
 /* ---------- MEMBRES / ADMIN ---------- */
 .member-row{
   display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;

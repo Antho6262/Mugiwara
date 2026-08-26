@@ -18,6 +18,11 @@
 
     <div class="card" id="capitaine-card" style="display:none;text-align:center;"></div>
 
+    <div class="card" style="text-align:center;">
+      <h3 style="margin-bottom:14px;">⏳ Prochaine paye</h3>
+      <div id="countdown-paye" style="display:flex;justify-content:center;gap:22px;flex-wrap:wrap;"></div>
+    </div>
+
     <div class="card">
       <h3>🗺️ Route vers Raftel</h3>
       <div id="carte-tresor"></div>
@@ -242,6 +247,38 @@
         <div class="stat"><div class="v">${fmtMoney(solde_propre)}</div><div class="l">💵 Argent propre</div></div>
       `;
     });
+
+    // ---- Compte à rebours vers la prochaine paye (fin de la semaine active = dimanche 19h) ----
+    async function demarrerCountdown() {
+      const activeId = (await db.ref('config/semaine_active_id').get()).val();
+      if (!activeId) return;
+      const semaine = (await db.ref('semaines/' + activeId).get()).val();
+      if (!semaine || !semaine.fin) return;
+      const cible = new Date(semaine.fin).getTime();
+
+      function tick() {
+        const now = Date.now();
+        const diff = cible - now;
+        const el = document.getElementById('countdown-paye');
+        if (diff <= 0) {
+          el.innerHTML = `<div class="cd-bloc"><div class="n">⚓</div><div class="l">Nouvelle semaine imminente</div></div>`;
+          return;
+        }
+        const j = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        el.innerHTML = `
+          <div class="cd-bloc"><div class="n">${j}</div><div class="l">Jours</div></div>
+          <div class="cd-bloc"><div class="n">${String(h).padStart(2,'0')}</div><div class="l">Heures</div></div>
+          <div class="cd-bloc"><div class="n">${String(m).padStart(2,'0')}</div><div class="l">Minutes</div></div>
+          <div class="cd-bloc"><div class="n">${String(s).padStart(2,'0')}</div><div class="l">Secondes</div></div>
+        `;
+      }
+      tick();
+      setInterval(tick, 1000);
+    }
+    demarrerCountdown();
   }
 </script>
 </body>
