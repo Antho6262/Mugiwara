@@ -129,6 +129,11 @@
               ? `<input type="number" class="edit-prix" data-cat="${cat}" data-id="${id}" min="0" step="1" value="${a.prix || 0}">`
               : `<span>${fmtMoney(a.prix)}</span>`}
           </div>
+          ${peutModifier ? `
+          <div class="arme-row">
+            <label>Image</label>
+            <input type="text" class="edit-image" data-cat="${cat}" data-id="${id}" placeholder="Lien d'image (optionnel)" value="${a.image_url || ''}">
+          </div>` : ''}
         </div>
       `).join('');
 
@@ -142,6 +147,11 @@
         inp.addEventListener('change', () => {
           const v = parseFloat(inp.value);
           db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/prix`).set(isNaN(v) || v < 0 ? 0 : v);
+        });
+      });
+      el.querySelectorAll('.edit-image').forEach(inp => {
+        inp.addEventListener('change', () => {
+          db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(inp.value.trim());
         });
       });
     }
