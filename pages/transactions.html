@@ -92,20 +92,21 @@
     });
 
     function setupTransactionType(prefix, type) {
+      const fp = prefix === 'achat' ? 'a' : 'v'; // préfixe réel des champs du formulaire
       document.getElementById('form-' + prefix).addEventListener('submit', e => {
         e.preventDefault();
-        const produit_nom = document.getElementById(prefix + '-produit').value.trim();
-        const quantite = parseInt(document.getElementById(prefix + '-qty').value, 10);
-        const prix = parseFloat(document.getElementById(prefix + '-prix').value);
-        const type_argent = document.getElementById(prefix + '-typeargent').value;
-        const notes = document.getElementById(prefix + '-notes').value.trim();
+        const produit_nom = document.getElementById(fp + '-produit').value.trim();
+        const quantite = parseInt(document.getElementById(fp + '-qty').value, 10);
+        const prix = parseFloat(document.getElementById(fp + '-prix').value);
+        const type_argent = document.getElementById(fp + '-typeargent').value;
+        const notes = document.getElementById(fp + '-notes').value.trim();
         if (!produit_nom || isNaN(quantite) || isNaN(prix)) return;
         db.ref('transactions/' + uid()).set({
           type, produit_nom, quantite, prix, type_argent, notes,
           membre_id: membre.id, date: new Date().toISOString()
         });
         document.getElementById('form-' + prefix).reset();
-        document.getElementById(prefix + '-qty').value = '1';
+        document.getElementById(fp + '-qty').value = '1';
       });
 
       db.ref('transactions').on('value', snap => {
