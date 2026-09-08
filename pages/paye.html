@@ -76,6 +76,7 @@
       sel.addEventListener('change', () => {
         semaineSelectionnee = sel.value;
         refresh();
+        renderHistorique();
       });
     }
 
@@ -129,10 +130,10 @@
         const membresFrais = Object.fromEntries(entries(mSnap.val()));
         const semainesFraiches = Object.fromEntries(entries(sSnap.val()));
         const nomSemaineFrais = id => id ? (semainesFraiches[id] ? semainesFraiches[id].nom : 'Semaine supprimée') : '—';
-        const rows = entries(snap.val());
+        const rows = entries(snap.val()).filter(([, p]) => !semaineSelectionnee || p.semaine_id === semaineSelectionnee);
         const tbody = document.getElementById('hist-body');
         tbody.innerHTML = rows.length === 0
-          ? `<tr><td colspan="5" class="empty">Aucun paiement enregistré.</td></tr>`
+          ? `<tr><td colspan="5" class="empty">Aucun paiement enregistré pour cette période.</td></tr>`
           : rows.slice().reverse().map(([id, p]) => {
               const m = membresFrais[p.membre_id];
               const g = m ? gradeInfo(m.grade) : null;
