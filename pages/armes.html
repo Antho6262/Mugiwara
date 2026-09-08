@@ -157,6 +157,10 @@
           <div class="arme-row">
             <label>Image</label>
             <input type="text" class="edit-image" data-cat="${cat}" data-id="${id}" placeholder="Lien d'image (optionnel)" value="${a.image_url || ''}">
+          </div>
+          <div class="arme-row">
+            <label></label>
+            <input type="file" accept="image/*" class="upload-image" data-cat="${cat}" data-id="${id}" style="font-size:12px;">
           </div>` : ''}
         </div>
       `).join('');
@@ -176,6 +180,31 @@
       el.querySelectorAll('.edit-image').forEach(inp => {
         inp.addEventListener('change', () => {
           db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(inp.value.trim());
+        });
+      });
+      el.querySelectorAll('.upload-image').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const fichier = inp.files[0];
+          if (!fichier) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+              const taille = 96; // icône compressée, largement suffisant pour l'affichage
+              const canvas = document.createElement('canvas');
+              canvas.width = taille; canvas.height = taille;
+              const ctx = canvas.getContext('2d');
+              // recadrage carré centré
+              const ratio = Math.max(taille / img.width, taille / img.height);
+              const w = img.width * ratio, h = img.height * ratio;
+              ctx.drawImage(img, (taille - w) / 2, (taille - h) / 2, w, h);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+              db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(dataUrl)
+                .then(() => toast('Image enregistrée.'));
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(fichier);
         });
       });
     }
