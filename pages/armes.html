@@ -13,8 +13,8 @@
   }
   .arme-top{display:flex;align-items:center;gap:10px;}
   .arme-icon{
-    width:46px;height:46px;border-radius:8px;background:var(--bg-1);border:1px solid var(--line);
-    display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;overflow:hidden;
+    width:64px;height:64px;border-radius:8px;background:var(--bg-1);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;overflow:hidden;
   }
   .arme-icon img{width:100%;height:100%;object-fit:cover;}
   .arme-nom{font-family:'EB Garamond',serif;font-size:17px;font-weight:600;}
@@ -156,10 +156,6 @@
           ${peutModifier ? `
           <div class="arme-row">
             <label>Image</label>
-            <input type="text" class="edit-image" data-cat="${cat}" data-id="${id}" placeholder="Lien d'image (optionnel)" value="${a.image_url || ''}">
-          </div>
-          <div class="arme-row">
-            <label></label>
             <input type="file" accept="image/*" class="upload-image" data-cat="${cat}" data-id="${id}" style="font-size:12px;">
           </div>` : ''}
         </div>
@@ -177,11 +173,6 @@
           db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/prix`).set(isNaN(v) || v < 0 ? 0 : v);
         });
       });
-      el.querySelectorAll('.edit-image').forEach(inp => {
-        inp.addEventListener('change', () => {
-          db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(inp.value.trim());
-        });
-      });
       el.querySelectorAll('.upload-image').forEach(inp => {
         inp.addEventListener('change', () => {
           const fichier = inp.files[0];
@@ -190,15 +181,17 @@
           reader.onload = () => {
             const img = new Image();
             img.onload = () => {
-              const taille = 96; // icône compressée, largement suffisant pour l'affichage
+              const taille = 220; // résolution stockée plus élevée pour rester net à l'affichage
               const canvas = document.createElement('canvas');
               canvas.width = taille; canvas.height = taille;
               const ctx = canvas.getContext('2d');
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
               // recadrage carré centré
               const ratio = Math.max(taille / img.width, taille / img.height);
               const w = img.width * ratio, h = img.height * ratio;
               ctx.drawImage(img, (taille - w) / 2, (taille - h) / 2, w, h);
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
               db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(dataUrl)
                 .then(() => toast('Image enregistrée.'));
             };
