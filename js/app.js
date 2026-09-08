@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { page: 'dashboard',    icon: '🗺️', label: 'Dashboard',    file: 'dashboard.html' },
   { page: 'tracker',      icon: '🏴‍☠️', label: 'Tracker',      file: 'tracker.html' },
   { page: 'stock',        icon: '📦', label: 'Stock',        file: 'stock.html' },
+  { page: 'armes',        icon: '🔫', label: 'Armurerie',    file: 'armes.html' },
   { page: 'transactions', icon: '🧾', label: 'Transactions', file: 'transactions.html' },
   { page: 'blanchiment',  icon: '🌊', label: 'Blanchiment',  file: 'blanchiment.html' },
   { page: 'stats',        icon: '🧭', label: 'Stats & Quotas', file: 'stats.html' },

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Mugiwara — Armurerie</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .arme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+  .arme-card{
+    background:var(--card-2);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;display:flex;flex-direction:column;gap:8px;
+  }
+  .arme-top{display:flex;align-items:center;gap:10px;}
+  .arme-icon{
+    width:46px;height:46px;border-radius:8px;background:var(--bg-1);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;overflow:hidden;
+  }
+  .arme-icon img{width:100%;height:100%;object-fit:cover;}
+  .arme-nom{font-family:'EB Garamond',serif;font-size:17px;font-weight:600;}
+  .arme-muni{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+  .arme-row{display:flex;gap:8px;align-items:center;}
+  .arme-row label{font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;width:44px;flex-shrink:0;}
+  .arme-row input{width:100%;padding:6px 8px;font-size:14px;}
+  .arme-stock-low{border-color:var(--danger) !important;color:var(--danger) !important;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Armurerie</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="note-hint" style="margin-bottom:16px;">Stock et prix d'achat modifiables ici même (sauvegarde automatique à la perte de focus).</div>
+
+    <div class="tabs">
+      <button data-tab="pistolet" class="active">🔫 Armes de poing</button>
+      <button data-tab="automatique">💥 Armes automatiques</button>
+      <button data-tab="pompe">🔴 Fusils à pompe</button>
+      <button data-tab="lourdes">🎯 Armes lourdes</button>
+    </div>
+
+    <div class="tabpanel active" id="panel-pistolet"><div class="card"><div class="arme-grid" id="grid-pistolet"></div></div></div>
+    <div class="tabpanel" id="panel-automatique"><div class="card"><div class="arme-grid" id="grid-automatique"></div></div></div>
+    <div class="tabpanel" id="panel-pompe"><div class="card"><div class="arme-grid" id="grid-pompe"></div></div></div>
+    <div class="tabpanel" id="panel-lourdes"><div class="card"><div class="arme-grid" id="grid-lourdes"></div></div></div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('armes', 'Armurerie');
+  if (membre) {
+
+    document.querySelectorAll('.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Catalogue de départ (nom + munitions max) — seedé une seule fois si absent de Firebase
+    const CATALOGUE_DEPART = {
+      pistolet: [
+        ['Pistolet artisanal', 80], ['SNS', 80], ['SNS PICO', 80], ['Colt', 80], ['P88', 80],
+        ['M9A3', 80], ['Pistolet de Combat', 80], ['Glock 17', 80], ['Pistolet en céramique', 80],
+        ['Calibre 50', 80], ['Berreta (Pistolet MK2)', 80], ['Pistolet Lourd', 80], ['Revolver', 80],
+      ],
+      automatique: [
+        ['Mini SMG', 120], ['Micro SMG', 120], ['TEC9', 120], ['Mini Uzi Tactic', 120],
+        ['MAC-10', 120], ['Mp5k', 120], ['Mitraillette Tactique', 120], ['Vesper 9', 120], ['Vortex SMG', 120],
+      ],
+      pompe: [
+        ['Fusil à canon scié', 30], ['Fusil à pompe', 30], ['Striker 12', 30],
+        ['Fusil à pompe d\'assaut', 30], ['Fusil à double canon', 30],
+      ],
+      lourdes: [
+        ['Fusil compact', 150], ['UMP 45', 120], ['SG552', 150], ['Fusil Lourd', 120], ['Thompson', 150],
+        ['AK47', 150], ['UMP 45 CHR', 150], ['Mk Priss', 150], ['AR 7', 150],
+      ],
+    };
+
+    async function seedSiVide() {
+      const snap = await db.ref('armes').get();
+      const data = snap.val() || {};
+      const updates = {};
+      Object.entries(CATALOGUE_DEPART).forEach(([cat, armes]) => {
+        if (data[cat]) return; // catégorie déjà présente, on ne touche à rien
+        const obj = {};
+        armes.forEach(([nom, munitions_max]) => {
+          obj[uid()] = { nom, munitions_max, stock: 0, prix: 0, image_url: '' };
+        });
+        updates[cat] = obj;
+      });
+      if (Object.keys(updates).length > 0) await db.ref('armes').update(updates);
+    }
+
+    function renderCategorie(cat, armesObj) {
+      const el = document.getElementById('grid-' + cat);
+      const armes = entries(armesObj || {}).sort((a, b) => a[1].nom.localeCompare(b[1].nom));
+      if (armes.length === 0) { el.innerHTML = '<div class="empty">Aucune arme dans cette catégorie.</div>'; return; }
+
+      const peutModifier = canManage(membre);
+      el.innerHTML = armes.map(([id, a]) => `
+        <div class="arme-card">
+          <div class="arme-top">
+            <div class="arme-icon">${a.image_url ? `<img src="${a.image_url}" alt="${a.nom}">` : '🔫'}</div>
+            <div>
+              <div class="arme-nom">${a.nom}</div>
+              <div class="arme-muni">${a.munitions_max || 0} munitions max</div>
+            </div>
+          </div>
+          <div class="arme-row">
+            <label>Stock</label>
+            ${peutModifier
+              ? `<input type="number" class="edit-stock ${(a.stock||0) <= 0 ? 'arme-stock-low' : ''}" data-cat="${cat}" data-id="${id}" min="0" step="1" value="${a.stock || 0}">`
+              : `<span>${a.stock || 0}</span>`}
+          </div>
+          <div class="arme-row">
+            <label>Prix</label>
+            ${peutModifier
+              ? `<input type="number" class="edit-prix" data-cat="${cat}" data-id="${id}" min="0" step="1" value="${a.prix || 0}">`
+              : `<span>${fmtMoney(a.prix)}</span>`}
+          </div>
+        </div>
+      `).join('');
+
+      el.querySelectorAll('.edit-stock').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const v = parseInt(inp.value, 10);
+          db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/stock`).set(isNaN(v) || v < 0 ? 0 : v);
+        });
+      });
+      el.querySelectorAll('.edit-prix').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const v = parseFloat(inp.value);
+          db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/prix`).set(isNaN(v) || v < 0 ? 0 : v);
+        });
+      });
+    }
+
+    seedSiVide().then(() => {
+      db.ref('armes').on('value', snap => {
+        const data = snap.val() || {};
+        ['pistolet', 'automatique', 'pompe', 'lourdes'].forEach(cat => renderCategorie(cat, data[cat]));
+      });
+    });
+  }
+</script>
+</body>
+</html>
