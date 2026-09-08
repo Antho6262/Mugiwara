@@ -23,6 +23,10 @@
   .arme-row label{font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;width:44px;flex-shrink:0;}
   .arme-row input{width:100%;padding:6px 8px;font-size:14px;}
   .arme-stock-low{border-color:var(--danger) !important;color:var(--danger) !important;}
+  .arme-upload-btn{
+    display:inline-block;width:100%;text-align:center;cursor:pointer;
+    padding:8px 10px;font-size:13px;white-space:nowrap;
+  }
 </style>
 </head>
 <body>
@@ -156,7 +160,10 @@
           ${peutModifier ? `
           <div class="arme-row">
             <label>Image</label>
-            <input type="file" accept="image/*" class="upload-image" data-cat="${cat}" data-id="${id}" style="font-size:12px;">
+            <label class="ghost arme-upload-btn">
+              📷 Choisir une image
+              <input type="file" accept="image/*" class="upload-image" data-cat="${cat}" data-id="${id}" style="display:none;">
+            </label>
           </div>` : ''}
         </div>
       `).join('');
