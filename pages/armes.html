@@ -66,24 +66,26 @@
       });
     });
 
-    // Catalogue de départ (nom + munitions max) — seedé une seule fois si absent de Firebase
+    // Catalogue de départ (nom, munitions max, prix de revente connu — 0 si INTERDIT)
     const CATALOGUE_DEPART = {
       pistolet: [
-        ['Pistolet artisanal', 80], ['SNS', 80], ['SNS PICO', 80], ['Colt', 80], ['P88', 80],
-        ['M9A3', 80], ['Pistolet de Combat', 80], ['Glock 17', 80], ['Pistolet en céramique', 80],
-        ['Calibre 50', 80], ['Berreta (Pistolet MK2)', 80], ['Pistolet Lourd', 80], ['Revolver', 80],
+        ['Pistolet artisanal', 80, 120000], ['SNS', 80, 120000], ['SNS PICO', 80, 120000],
+        ['Colt', 80, 150000], ['P88', 80, 180000], ['M9A3', 80, 150000],
+        ['Pistolet de Combat', 80, 180000], ['Glock 17', 80, 250000], ['Pistolet en céramique', 80, 200000],
+        ['Calibre 50', 80, 0], ['Berreta (Pistolet MK2)', 80, 0], ['Pistolet Lourd', 80, 0], ['Revolver', 80, 0],
       ],
       automatique: [
-        ['Mini SMG', 120], ['Micro SMG', 120], ['TEC9', 120], ['Mini Uzi Tactic', 120],
-        ['MAC-10', 120], ['Mp5k', 120], ['Mitraillette Tactique', 120], ['Vesper 9', 120], ['Vortex SMG', 120],
+        ['Mini SMG', 120, 500000], ['Micro SMG', 120, 500000], ['TEC9', 120, 500000],
+        ['Mini Uzi Tactic', 120, 0], ['MAC-10', 120, 0], ['Mp5k', 120, 0],
+        ['Mitraillette Tactique', 120, 0], ['Vesper 9', 120, 0], ['Vortex SMG', 120, 0],
       ],
       pompe: [
-        ['Fusil à canon scié', 30], ['Fusil à pompe', 30], ['Striker 12', 30],
-        ['Fusil à pompe d\'assaut', 30], ['Fusil à double canon', 30],
+        ['Fusil à canon scié', 30, 0], ['Fusil à pompe', 30, 0], ['Striker 12', 30, 0],
+        ['Fusil à pompe d\'assaut', 30, 0], ['Fusil à double canon', 30, 0],
       ],
       lourdes: [
-        ['Fusil compact', 150], ['UMP 45', 120], ['SG552', 150], ['Fusil Lourd', 120], ['Thompson', 150],
-        ['AK47', 150], ['UMP 45 CHR', 150], ['Mk Priss', 150], ['AR 7', 150],
+        ['Fusil compact', 150, 0], ['UMP 45', 120, 0], ['SG552', 150, 0], ['Fusil Lourd', 120, 0], ['Thompson', 150, 0],
+        ['AK47', 150, 0], ['UMP 45 CHR', 150, 0], ['Mk Priss', 150, 0], ['AR 7', 150, 0],
       ],
     };
 
@@ -94,12 +96,34 @@
       Object.entries(CATALOGUE_DEPART).forEach(([cat, armes]) => {
         if (data[cat]) return; // catégorie déjà présente, on ne touche à rien
         const obj = {};
-        armes.forEach(([nom, munitions_max]) => {
-          obj[uid()] = { nom, munitions_max, stock: 0, prix: 0, image_url: '' };
+        armes.forEach(([nom, munitions_max, prix]) => {
+          obj[uid()] = { nom, munitions_max, stock: 0, prix: prix || 0, image_url: '' };
         });
         updates[cat] = obj;
       });
       if (Object.keys(updates).length > 0) await db.ref('armes').update(updates);
+    }
+
+    // Corrige une seule fois les prix déjà seedés à 0 (catalogue créé avant l'ajout des prix connus)
+    async function appliquerPrixConnusUneFois() {
+      const flagSnap = await db.ref('config/prix_armes_appliques').get();
+      if (flagSnap.val()) return;
+
+      const prixConnus = {};
+      Object.values(CATALOGUE_DEPART).flat().forEach(([nom, , prix]) => { prixConnus[nom] = prix || 0; });
+
+      const snap = await db.ref('armes').get();
+      const data = snap.val() || {};
+      const updates = {};
+      Object.entries(data).forEach(([cat, armesObj]) => {
+        Object.entries(armesObj || {}).forEach(([id, a]) => {
+          if (prixConnus[a.nom] !== undefined && (a.prix || 0) === 0) {
+            updates[`armes/${cat}/${id}/prix`] = prixConnus[a.nom];
+          }
+        });
+      });
+      if (Object.keys(updates).length > 0) await db.ref().update(updates);
+      await db.ref('config/prix_armes_appliques').set(true);
     }
 
     function renderCategorie(cat, armesObj) {
@@ -156,12 +180,14 @@
       });
     }
 
-    seedSiVide().then(() => {
-      db.ref('armes').on('value', snap => {
-        const data = snap.val() || {};
-        ['pistolet', 'automatique', 'pompe', 'lourdes'].forEach(cat => renderCategorie(cat, data[cat]));
+    seedSiVide()
+      .then(appliquerPrixConnusUneFois)
+      .then(() => {
+        db.ref('armes').on('value', snap => {
+          const data = snap.val() || {};
+          ['pistolet', 'automatique', 'pompe', 'lourdes'].forEach(cat => renderCategorie(cat, data[cat]));
+        });
       });
-    });
   }
 </script>
 </body>
