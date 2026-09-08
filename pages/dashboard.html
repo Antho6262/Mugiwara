@@ -205,12 +205,12 @@
 
     function renderCarteTresor(total) {
       const etapes = [
-        { seuil: 0,       label: 'Départ',   emoji: '⚓' },
-        { seuil: 5000,    label: '$5k',      emoji: '🏝️' },
-        { seuil: 20000,   label: '$20k',     emoji: '🏝️' },
-        { seuil: 75000,   label: '$75k',     emoji: '🌋' },
-        { seuil: 250000,  label: '$250k',    emoji: '🗿' },
-        { seuil: 750000,  label: 'Raftel',   emoji: '🏴‍☠️' },
+        { seuil: 0,        label: 'Départ',   emoji: '⚓' },
+        { seuil: 500000,   label: '$500k',    emoji: '🏝️' },
+        { seuil: 1000000,  label: '$1M',      emoji: '🏝️' },
+        { seuil: 5000000,  label: '$5M',      emoji: '🌋' },
+        { seuil: 10000000, label: '$10M',     emoji: '🗿' },
+        { seuil: 50000000, label: 'Raftel',   emoji: '🏴‍☠️' },
       ];
       const positions = etapes.map((e, i) => (i / (etapes.length - 1)) * 100);
 
