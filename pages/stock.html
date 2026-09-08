@@ -10,13 +10,11 @@
 <div class="shell">
   <aside class="sidebar" id="sidebar"></aside>
   <main class="main">
-    <div class="pagehead">
+    <div class="pagehead" style="display:flex;align-items:center;justify-content:space-between;">
       <h2 id="pagehead-title">Stock</h2>
-      <div class="rule"></div>
+      <button class="ghost" id="btn-new-cat" style="display:none;">➕ Nouvelle catégorie</button>
     </div>
-
-    <div class="tabs" id="cat-tabs"></div>
-    <div id="cat-panels"></div>
+    <div class="rule"></div>
 
     <div class="card" id="new-cat-card" style="display:none;">
       <h3>Nouvelle catégorie</h3>
@@ -24,8 +22,12 @@
         <div class="field"><label>Nom</label><input type="text" id="c-nom" placeholder="Ex: Drogue" required></div>
         <div class="field"><label>Emoji</label><input type="text" id="c-emoji" placeholder="💊" maxlength="4"></div>
         <button class="submit" type="submit">Créer la catégorie</button>
+        <button class="ghost" type="button" id="btn-cancel-cat">Annuler</button>
       </form>
     </div>
+
+    <div class="tabs" id="cat-tabs"></div>
+    <div id="cat-panels"></div>
   </main>
 </div>
 
@@ -36,7 +38,17 @@
 <script>
   const membre = initShell('stock', 'Stock');
   if (membre) {
-    if (canManage(membre)) document.getElementById('new-cat-card').style.display = 'block';
+    if (canManage(membre)) document.getElementById('btn-new-cat').style.display = 'inline-block';
+
+    document.getElementById('btn-new-cat').addEventListener('click', () => {
+      document.getElementById('new-cat-card').style.display = 'block';
+      document.getElementById('btn-new-cat').style.display = 'none';
+    });
+    document.getElementById('btn-cancel-cat').addEventListener('click', () => {
+      document.getElementById('new-cat-card').style.display = 'none';
+      document.getElementById('btn-new-cat').style.display = 'inline-block';
+      document.getElementById('form-cat').reset();
+    });
 
     let activeCat = null;
 
@@ -157,8 +169,13 @@
       const nom = document.getElementById('c-nom').value.trim();
       const emoji = document.getElementById('c-emoji').value.trim() || '📦';
       if (!nom) return;
-      db.ref('stock/' + uid()).set({ nom, emoji, produits: {} });
+      const nouvelId = uid();
+      db.ref('stock/' + nouvelId).set({ nom, emoji, produits: {} }).then(() => {
+        activeCat = nouvelId;
+      });
       document.getElementById('form-cat').reset();
+      document.getElementById('new-cat-card').style.display = 'none';
+      document.getElementById('btn-new-cat').style.display = 'inline-block';
     });
   }
 </script>
