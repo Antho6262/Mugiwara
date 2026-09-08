@@ -35,19 +35,20 @@ body::before{
   content:"";
   position:fixed;inset:0;z-index:-2;
   background:
-    url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1MDAnIGhlaWdodD0nNDAnIHZpZXdCb3g9JzAgMCA1MDAgNDAnPgo8cGF0aCBkPSdNMCAyMCBRIDYyIDIgMTI1IDIwIFQgMjUwIDIwIFQgMzc1IDIwIFQgNTAwIDIwIFY0MCBIMCBaJyBmaWxsPScjOGIxZjI0JyBmaWxsLW9wYWNpdHk9JzAuMjInLz4KPC9zdmc+Cg=='),
-    url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc0MDAnIGhlaWdodD0nNTAnIHZpZXdCb3g9JzAgMCA0MDAgNTAnPgo8cGF0aCBkPSdNMCAyNSBRIDUwIDUgMTAwIDI1IFQgMjAwIDI1IFQgMzAwIDI1IFQgNDAwIDI1IFY1MCBIMCBaJyBmaWxsPScjNWM0MzIxJyBmaWxsLW9wYWNpdHk9JzAuMzUnLz4KPC9zdmc+Cg=='),
+    url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNDAnIGhlaWdodD0nMTAwJyB2aWV3Qm94PScwIDAgMTQwIDEwMCc+CiAgPGcgZmlsbD0nIzFhMTIwYScgZmlsbC1vcGFjaXR5PScwLjU1Jz4KICAgIDxwYXRoIGQ9J00xNSA2OCBRNzAgNjIgMTI1IDY4IEwxMTUgODQgUTcwIDkwIDI1IDg0IFonLz4KICAgIDxyZWN0IHg9JzY4JyB5PScxOCcgd2lkdGg9JzMnIGhlaWdodD0nNTAnLz4KICAgIDxwYXRoIGQ9J003MSAyMCBMMTEwIDQwIEw3MSA1OCBaJy8+CiAgICA8cGF0aCBkPSdNNjcgMjYgTDQwIDQyIEw2NyA1NCBaJy8+CiAgICA8cGF0aCBkPSdNNzEgMTQgTDgyIDE4IEw3MSAyMCBaJy8+CiAgPC9nPgo8L3N2Zz4K'),
+    url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1MDAnIGhlaWdodD0nNDAnIHZpZXdCb3g9JzAgMCA1MDAgNDAnPgo8cGF0aCBkPSdNMCAyMCBRIDYyIDIgMTI1IDIwIFQgMjUwIDIwIFQgMzc1IDIwIFQgNTAwIDIwIFY0MCBIMCBaJyBmaWxsPScjMmU4NmFiJyBmaWxsLW9wYWNpdHk9JzAuMjgnLz4KPC9zdmc+Cg=='),
+    url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc0MDAnIGhlaWdodD0nNTAnIHZpZXdCb3g9JzAgMCA0MDAgNTAnPgo8cGF0aCBkPSdNMCAyNSBRIDUwIDUgMTAwIDI1IFQgMjAwIDI1IFQgMzAwIDI1IFQgNDAwIDI1IFY1MCBIMCBaJyBmaWxsPScjMWM1ZDc4JyBmaWxsLW9wYWNpdHk9JzAuNDAnLz4KPC9zdmc+Cg=='),
     radial-gradient(900px 500px at 50% -8%, rgba(216,173,82,0.10), transparent 60%),
     repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, transparent 2px, transparent 4px),
     linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 50%, #060402 100%);
-  background-repeat: repeat-x, repeat-x, no-repeat, repeat, no-repeat;
-  background-position: left bottom, left bottom, center, center, center;
-  background-size: 500px 40px, 400px 50px, auto, auto, auto;
-  animation: vagues-drift 20s linear infinite;
+  background-repeat: no-repeat, repeat-x, repeat-x, no-repeat, repeat, no-repeat;
+  background-position: -200px 72%, left bottom, left bottom, center, center, center;
+  background-size: 130px auto, 500px 40px, 400px 50px, auto, auto, auto;
+  animation: vagues-drift 24s linear infinite;
 }
 @keyframes vagues-drift{
-  from{ background-position: 0 bottom, 0 bottom, center, center, center; }
-  to{ background-position: -500px bottom, -400px bottom, center, center, center; }
+  from{ background-position: -200px 72%, 0 bottom, 0 bottom, center, center, center; }
+  to{ background-position: calc(100vw + 200px) 72%, -500px bottom, -400px bottom, center, center, center; }
 }
 body::after{
   content:"";
