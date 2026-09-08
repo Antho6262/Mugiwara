@@ -18,6 +18,13 @@
     <div class="grid cols-3" id="soldes"></div>
 
     <div class="card">
+      <div class="field" style="max-width:340px;">
+        <label>Semaine affichée (historique)</label>
+        <select id="b-semaine"></select>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>Nouveau blanchiment</h3>
       <form class="entry" id="form-blanch">
         <div class="field"><label>Montant sale à blanchir ($)</label><input type="number" id="b-montant" min="0" step="1" required></div>
@@ -45,12 +52,29 @@
   const membre = initShell('blanchiment', 'Blanchiment');
   if (membre) {
     let membresMap = {}, taux = 20;
+    let semaineFiltre = '';
+    let activeWeekId = null;
+    let lastSnap = null;
 
     db.ref('membres').on('value', s => { membresMap = Object.fromEntries(entries(s.val())); });
     db.ref('config/blanchiment_taux').on('value', s => {
       taux = s.val() ?? 20;
       document.getElementById('b-hint').textContent = `Taux de frais actuel : ${taux}% (retenu au passage sale → propre).`;
     });
+    db.ref('config/semaine_active_id').on('value', s => { activeWeekId = s.val(); });
+
+    async function chargerSemaines() {
+      const allSnap = await db.ref('semaines').get();
+      const all = entries(allSnap.val()).sort((a, b) => (b[1].debut || '').localeCompare(a[1].debut || ''));
+      const sel = document.getElementById('b-semaine');
+      sel.innerHTML =
+        all.map(([id, s]) => `<option value="${id}">${s.nom}${s.bloquee ? ' 🔒' : ' 🟢'}${id === activeWeekId ? ' (active)' : ''}</option>`).join('') +
+        '<option value="">— Toutes les semaines —</option>';
+      sel.value = activeWeekId || '';
+      semaineFiltre = sel.value;
+      renderHistorique();
+      sel.addEventListener('change', () => { semaineFiltre = sel.value; renderHistorique(); });
+    }
 
     function refreshSoldes() {
       computeSoldes().then(({ solde_sale, solde_propre }) => {
@@ -72,16 +96,17 @@
       const montant_propre = montant_sale - frais;
       db.ref('blanchiments/' + uid()).set({
         montant_sale, frais, montant_propre, description,
-        responsable: membre.prenom, date: new Date().toISOString()
+        responsable: membre.prenom, date: new Date().toISOString(), semaine_id: activeWeekId
       }).then(refreshSoldes);
       document.getElementById('form-blanch').reset();
     });
 
-    db.ref('blanchiments').on('value', snap => {
-      const rows = entries(snap.val());
+    function renderHistorique() {
+      if (!lastSnap) return;
+      const rows = entries(lastSnap.val()).filter(([, b]) => !semaineFiltre || b.semaine_id === semaineFiltre);
       const tbody = document.getElementById('b-table');
       tbody.innerHTML = rows.length === 0
-        ? `<tr><td colspan="6" class="empty">Aucun blanchiment enregistré.</td></tr>`
+        ? `<tr><td colspan="6" class="empty">Aucun blanchiment enregistré pour cette période.</td></tr>`
         : rows.slice().reverse().map(([id, b]) => `
             <tr>
               <td>${b.description || '—'}</td>
@@ -91,8 +116,9 @@
               <td>${b.responsable || '—'}</td>
               <td><button class="del" data-id="${id}">✕</button></td>
             </tr>`).join('');
-      refreshSoldes();
-    });
+    }
+    db.ref('blanchiments').on('value', snap => { lastSnap = snap; renderHistorique(); refreshSoldes(); });
+    chargerSemaines();
 
     document.body.addEventListener('click', e => {
       if (e.target.matches('#b-table .del')) db.ref('blanchiments/' + e.target.dataset.id).remove();
