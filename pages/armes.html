@@ -148,7 +148,7 @@
           <div class="arme-row">
             <label>Stock</label>
             ${peutModifier
-              ? `<input type="number" class="edit-stock ${(a.stock||0) <= 0 ? 'arme-stock-low' : ''}" data-cat="${cat}" data-id="${id}" min="0" step="1" value="${a.stock || 0}">`
+              ? `<input type="number" class="edit-stock" data-cat="${cat}" data-id="${id}" min="0" step="1" value="${a.stock || 0}">`
               : `<span>${a.stock || 0}</span>`}
           </div>
           <div class="arme-row">
