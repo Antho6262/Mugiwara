@@ -16,6 +16,13 @@
     </div>
 
     <div class="card">
+      <div class="field" style="max-width:340px;">
+        <label>Semaine affichée</label>
+        <select id="tx-semaine"></select>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>Nouvelle taxe</h3>
       <form class="entry" id="form-taxe">
         <div class="field"><label>Membre</label><select id="tx-membre" required></select></div>
@@ -58,6 +65,24 @@
     if (canManage(membre)) document.getElementById('new-type-card').style.display = 'block';
 
     let membresMap = {}, typesMap = {};
+    let semaineFiltre = '';
+    let activeWeekId = null;
+    let lastSnap = null;
+
+    db.ref('config/semaine_active_id').on('value', s => { activeWeekId = s.val(); });
+
+    async function chargerSemaines() {
+      const allSnap = await db.ref('semaines').get();
+      const all = entries(allSnap.val()).sort((a, b) => (b[1].debut || '').localeCompare(a[1].debut || ''));
+      const sel = document.getElementById('tx-semaine');
+      sel.innerHTML =
+        all.map(([id, s]) => `<option value="${id}">${s.nom}${s.bloquee ? ' 🔒' : ' 🟢'}${id === activeWeekId ? ' (active)' : ''}</option>`).join('') +
+        '<option value="">— Toutes les semaines —</option>';
+      sel.value = ''; // par défaut : toutes les semaines (les taxes antérieures n'ont pas de semaine associée)
+      semaineFiltre = sel.value;
+      renderHistorique();
+      sel.addEventListener('change', () => { semaineFiltre = sel.value; renderHistorique(); });
+    }
 
     db.ref('membres').on('value', s => {
       membresMap = Object.fromEntries(entries(s.val()));
@@ -92,17 +117,18 @@
       if (!membre_id || !taxe_id || isNaN(montant)) return;
       db.ref('taxes/' + uid()).set({
         membre_id, taxe_id, taxe_nom: (typesMap[taxe_id] || {}).nom || '—',
-        montant, type_argent, notes, date: new Date().toISOString()
+        montant, type_argent, notes, date: new Date().toISOString(), semaine_id: activeWeekId
       });
       document.getElementById('form-taxe').reset();
     });
 
-    db.ref('taxes').on('value', snap => {
-      const rows = entries(snap.val());
+    function renderHistorique() {
+      if (!lastSnap) return;
+      const rows = entries(lastSnap.val()).filter(([, t]) => !semaineFiltre || t.semaine_id === semaineFiltre);
       const tbody = document.getElementById('tx-table');
       let grand = 0;
       tbody.innerHTML = rows.length === 0
-        ? `<tr><td colspan="6" class="empty">Aucune taxe enregistrée.</td></tr>`
+        ? `<tr><td colspan="6" class="empty">Aucune taxe enregistrée pour cette période.</td></tr>`
         : rows.slice().reverse().map(([id, t]) => {
             const m = membresMap[t.membre_id];
             const g = m ? gradeInfo(m.grade) : null;
@@ -117,7 +143,9 @@
             </tr>`;
           }).join('');
       document.getElementById('tx-grand').textContent = 'Total payé : ' + fmtMoney(grand);
-    });
+    }
+    db.ref('taxes').on('value', snap => { lastSnap = snap; renderHistorique(); });
+    chargerSemaines();
 
     document.body.addEventListener('click', e => {
       if (e.target.matches('#tx-table .del')) db.ref('taxes/' + e.target.dataset.id).remove();
