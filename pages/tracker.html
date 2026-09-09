@@ -306,7 +306,7 @@
     }
 
     function renderHints() {
-      document.getElementById('a-rate-hint').textContent = `Taux actuel : ${config.taux_action_pct}% du montant total reversé au membre.`;
+      document.getElementById('a-rate-hint').textContent = `Taux actuel : ${config.taux_action_pct}% du montant total reversé au membre. Le type "ATM" retire automatiquement 1 unité du produit "ATM" dans le Stock (même en cas d'échec), si le produit existe.`;
       document.getElementById('g-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_cambriolage)} par cambriolage (tarif fixe). Consomme 1 outil de crochetage par cambriolage (même en cas d'échec).`;
       document.getElementById('v-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_pochon)} par pochon vendu (tarif fixe). Le produit est retiré du stock même en cas d'échec.`;
       document.getElementById('l-rate-hint').textContent = `Taux actuel : ${fmtMoney(config.taux_branche)} par branche récoltée (tarif fixe). Les ingrédients saisis sont retirés du stock même en cas d'échec.`;
@@ -365,12 +365,34 @@
       const note = document.getElementById('a-note').value.trim();
       if (!membre_id || isNaN(montant)) return;
       db.ref('actions/' + uid()).set({ membre_id, type, montant, resultat, raison, note, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
+      if (type === 'ATM') deduireStockNomme('atm');
       document.getElementById('a-montant').value = '';
       document.getElementById('a-note').value = '';
       document.getElementById('a-raison').value = '';
       document.getElementById('a-raison-wrap').style.display = 'none';
       document.getElementById('a-resultat').value = 'Réussite';
     });
+
+    // Retire 1 unité du premier produit du Stock dont le nom contient "motCle" (toutes catégories confondues)
+    async function deduireStockNomme(motCle) {
+      try {
+        const stockSnap = await db.ref('stock').get();
+        const cats = entries(stockSnap.val());
+        for (const [catId, cat] of cats) {
+          const produits = entries(cat.produits);
+          const prod = produits.find(([pid, p]) => (p.nom || '').toLowerCase().includes(motCle));
+          if (prod) {
+            const [pid] = prod;
+            const ref = db.ref(`stock/${catId}/produits/${pid}/stock`);
+            const cur = (await ref.get()).val() || 0;
+            await ref.set(Math.max(0, cur - 1));
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('deduireStockNomme', err); // jamais bloquant
+      }
+    }
 
     // ---- CAMBRIOLAGE ----
     function renderGofast() {
