@@ -376,27 +376,21 @@
     // Retire 1 unité du premier produit du Stock dont le nom contient "motCle" (toutes catégories confondues)
     async function deduireStockNomme(motCle) {
       try {
-        console.log('[deduireStockNomme] appelée avec', motCle);
         const stockSnap = await db.ref('stock').get();
         const cats = entries(stockSnap.val());
-        console.log('[deduireStockNomme] catégories trouvées:', cats.map(([id, c]) => c.nom));
         for (const [catId, cat] of cats) {
           const produits = entries(cat.produits);
-          console.log('[deduireStockNomme] produits dans', cat.nom, ':', produits.map(([id, p]) => p.nom));
           const prod = produits.find(([pid, p]) => (p.nom || '').toLowerCase().includes(motCle));
           if (prod) {
-            const [pid, pdata] = prod;
-            console.log('[deduireStockNomme] trouvé:', pdata.nom, 'stock actuel:', pdata.stock);
+            const [pid] = prod;
             const ref = db.ref(`stock/${catId}/produits/${pid}/stock`);
             const cur = (await ref.get()).val() || 0;
             await ref.set(Math.max(0, cur - 1));
-            console.log('[deduireStockNomme] nouveau stock:', Math.max(0, cur - 1));
             return;
           }
         }
-        console.log('[deduireStockNomme] AUCUN produit trouvé contenant', motCle);
       } catch (err) {
-        console.error('[deduireStockNomme] ERREUR', err);
+        console.error('deduireStockNomme', err); // jamais bloquant
       }
     }
 
