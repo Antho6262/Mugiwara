@@ -42,13 +42,13 @@ body::before{
     repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, transparent 2px, transparent 4px),
     linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 50%, #060402 100%);
   background-repeat: no-repeat, repeat-x, repeat-x, no-repeat, repeat, no-repeat;
-  background-position: -200px 65%, left bottom, left bottom, center, center, center;
+  background-position: -200px bottom, left bottom, left bottom, center, center, center;
   background-size: 130px auto, 500px 40px, 400px 50px, auto, auto, auto;
   animation: vagues-drift 24s linear infinite;
 }
 @keyframes vagues-drift{
-  from{ background-position: -200px 65%, 0 bottom, 0 bottom, center, center, center; }
-  to{ background-position: calc(100vw + 200px) 65%, -500px bottom, -400px bottom, center, center, center; }
+  from{ background-position: -200px bottom, 0 bottom, 0 bottom, center, center, center; }
+  to{ background-position: calc(100vw + 200px) bottom, -500px bottom, -400px bottom, center, center, center; }
 }
 body::after{
   content:"";
