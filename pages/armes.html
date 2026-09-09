@@ -77,12 +77,17 @@
             <button class="ghost" id="btn-new-letales">➕ Ajouter une arme</button>
           </div>
           <div style="border-bottom:1px dashed var(--line);margin:10px 0 14px;"></div>
-          <form class="entry" id="form-letales" style="display:none;margin-bottom:16px;">
-            <div class="field"><label>Nom</label><input type="text" id="bl-nom" required></div>
-            <div class="field"><label>Prix</label><input type="number" id="bl-prix" min="0" step="1" required></div>
-            <div class="field"><label>Stock</label><input type="number" id="bl-stock" min="0" step="1" value="0"></div>
-            <button class="submit" type="submit">Ajouter</button>
-            <button class="ghost" type="button" id="btn-cancel-letales">Annuler</button>
+          <form class="arme-card" id="form-letales" style="display:none;">
+            <div class="arme-top">
+              <div class="arme-icon">🗡️</div>
+              <input type="text" id="bl-nom" placeholder="Nom de l'arme" required style="font-family:'EB Garamond',serif;font-size:15px;">
+            </div>
+            <div class="arme-row"><label>Stock</label><input type="number" id="bl-stock" min="0" step="1" value="0"></div>
+            <div class="arme-row"><label>Prix</label><input type="number" id="bl-prix" min="0" step="1" required></div>
+            <div style="display:flex;gap:8px;">
+              <button class="submit" type="submit" style="flex:1;">Ajouter</button>
+              <button class="ghost" type="button" id="btn-cancel-letales">Annuler</button>
+            </div>
           </form>
           <div class="arme-grid" id="grid-letales"></div>
         </div>
@@ -95,12 +100,17 @@
             <button class="ghost" id="btn-new-nonletales">➕ Ajouter une arme</button>
           </div>
           <div style="border-bottom:1px dashed var(--line);margin:10px 0 14px;"></div>
-          <form class="entry" id="form-nonletales" style="display:none;margin-bottom:16px;">
-            <div class="field"><label>Nom</label><input type="text" id="bn-nom" required></div>
-            <div class="field"><label>Prix</label><input type="number" id="bn-prix" min="0" step="1" required></div>
-            <div class="field"><label>Stock</label><input type="number" id="bn-stock" min="0" step="1" value="0"></div>
-            <button class="submit" type="submit">Ajouter</button>
-            <button class="ghost" type="button" id="btn-cancel-nonletales">Annuler</button>
+          <form class="arme-card" id="form-nonletales" style="display:none;">
+            <div class="arme-top">
+              <div class="arme-icon">🥊</div>
+              <input type="text" id="bn-nom" placeholder="Nom de l'arme" required style="font-family:'EB Garamond',serif;font-size:15px;">
+            </div>
+            <div class="arme-row"><label>Stock</label><input type="number" id="bn-stock" min="0" step="1" value="0"></div>
+            <div class="arme-row"><label>Prix</label><input type="number" id="bn-prix" min="0" step="1" required></div>
+            <div style="display:flex;gap:8px;">
+              <button class="submit" type="submit" style="flex:1;">Ajouter</button>
+              <button class="ghost" type="button" id="btn-cancel-nonletales">Annuler</button>
+            </div>
           </form>
           <div class="arme-grid" id="grid-non_letales"></div>
         </div>
