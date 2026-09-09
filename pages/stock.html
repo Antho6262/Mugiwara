@@ -84,7 +84,25 @@
 
       panelsEl.innerHTML = `
         <div class="card">
-          <h3>${cat.emoji || '📦'} ${cat.nom}</h3>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <h3 style="margin-bottom:0;border-bottom:none;padding-bottom:0;">${cat.emoji || '📦'} ${cat.nom}</h3>
+            ${canManage(membre) ? `
+              <div style="display:flex;gap:8px;">
+                <button class="ghost" id="btn-new-prod">➕ Ajouter un produit</button>
+                <button class="ghost del-cat" data-cat="${catId}">Supprimer la catégorie</button>
+              </div>` : ''}
+          </div>
+          <div style="border-bottom:1px dashed var(--line);margin:10px 0 14px;"></div>
+
+          ${canManage(membre) ? `
+          <form class="entry" id="form-prod" style="display:none;margin-bottom:16px;">
+            <div class="field"><label>Nom</label><input type="text" id="p-nom" required></div>
+            <div class="field"><label>Prix</label><input type="number" id="p-prix" min="0" step="1" required></div>
+            <div class="field"><label>Seuil d'alerte</label><input type="number" id="p-seuil" min="0" step="1" value="5"></div>
+            <button class="submit" type="submit">Ajouter</button>
+            <button class="ghost" type="button" id="btn-cancel-prod">Annuler</button>
+          </form>` : ''}
+
           <table>
             <thead><tr><th>Produit</th><th>Prix</th><th>Stock</th><th>Seuil</th><th>Ajuster</th>${canManage(membre) ? '<th></th>' : ''}</tr></thead>
             <tbody>
@@ -109,17 +127,6 @@
             </tbody>
           </table>
         </div>
-        ${canManage(membre) ? `
-        <div class="card">
-          <h3>Nouveau produit</h3>
-          <form class="entry" id="form-prod">
-            <div class="field"><label>Nom</label><input type="text" id="p-nom" required></div>
-            <div class="field"><label>Prix</label><input type="number" id="p-prix" min="0" step="1" required></div>
-            <div class="field"><label>Seuil d'alerte</label><input type="number" id="p-seuil" min="0" step="1" value="5"></div>
-            <button class="submit" type="submit">Ajouter</button>
-          </form>
-          <div style="margin-top:14px;"><button class="ghost del-cat" data-cat="${catId}">Supprimer cette catégorie</button></div>
-        </div>` : ''}
       `;
 
       panelsEl.querySelectorAll('.adj').forEach(btn => {
@@ -151,7 +158,19 @@
         db.ref('stock/' + delCatBtn.dataset.cat).remove();
         activeCat = null;
       });
+
+      const btnNewProd = document.getElementById('btn-new-prod');
       const formProd = document.getElementById('form-prod');
+      const btnCancelProd = document.getElementById('btn-cancel-prod');
+      if (btnNewProd) btnNewProd.addEventListener('click', () => {
+        formProd.style.display = 'flex';
+        btnNewProd.style.display = 'none';
+      });
+      if (btnCancelProd) btnCancelProd.addEventListener('click', () => {
+        formProd.style.display = 'none';
+        btnNewProd.style.display = 'inline-block';
+        formProd.reset();
+      });
       if (formProd) formProd.addEventListener('submit', e => {
         e.preventDefault();
         const nom = document.getElementById('p-nom').value.trim();
@@ -161,6 +180,8 @@
         db.ref(`stock/${catId}/produits/${uid()}`).set({ nom, prix, seuil, stock: 0 });
         formProd.reset();
         document.getElementById('p-seuil').value = 5;
+        formProd.style.display = 'none';
+        btnNewProd.style.display = 'inline-block';
       });
     }
 
