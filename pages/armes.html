@@ -27,6 +27,10 @@
     display:inline-block;width:100%;text-align:center;cursor:pointer;
     padding:8px 10px;font-size:13px;white-space:nowrap;
   }
+  .opanel{display:none;}
+  .opanel.active{display:block;}
+  .btabpanel{display:none;}
+  .btabpanel.active{display:block;}
 </style>
 </head>
 <body>
@@ -40,16 +44,68 @@
     <div class="note-hint" style="margin-bottom:16px;">Stock et prix d'achat modifiables ici même (sauvegarde automatique à la perte de focus).</div>
 
     <div class="tabs">
-      <button data-tab="pistolet" class="active">🔫 Armes de poing</button>
-      <button data-tab="automatique">💥 Armes automatiques</button>
-      <button data-tab="pompe">🔴 Fusils à pompe</button>
-      <button data-tab="lourdes">🎯 Armes lourdes</button>
+      <button data-otab="feu" class="active">🔫 Armes à feu</button>
+      <button data-otab="blanches">🗡️ Armes blanches</button>
     </div>
 
-    <div class="tabpanel active" id="panel-pistolet"><div class="card"><div class="arme-grid" id="grid-pistolet"></div></div></div>
-    <div class="tabpanel" id="panel-automatique"><div class="card"><div class="arme-grid" id="grid-automatique"></div></div></div>
-    <div class="tabpanel" id="panel-pompe"><div class="card"><div class="arme-grid" id="grid-pompe"></div></div></div>
-    <div class="tabpanel" id="panel-lourdes"><div class="card"><div class="arme-grid" id="grid-lourdes"></div></div></div>
+    <!-- ARMES À FEU -->
+    <div class="opanel active" id="opanel-feu">
+      <div class="tabs">
+        <button data-tab="pistolet" class="active">🔫 Armes de poing</button>
+        <button data-tab="automatique">💥 Armes automatiques</button>
+        <button data-tab="pompe">🔴 Fusils à pompe</button>
+        <button data-tab="lourdes">🎯 Armes lourdes</button>
+      </div>
+
+      <div class="tabpanel active" id="panel-pistolet"><div class="card"><div class="arme-grid" id="grid-pistolet"></div></div></div>
+      <div class="tabpanel" id="panel-automatique"><div class="card"><div class="arme-grid" id="grid-automatique"></div></div></div>
+      <div class="tabpanel" id="panel-pompe"><div class="card"><div class="arme-grid" id="grid-pompe"></div></div></div>
+      <div class="tabpanel" id="panel-lourdes"><div class="card"><div class="arme-grid" id="grid-lourdes"></div></div></div>
+    </div>
+
+    <!-- ARMES BLANCHES -->
+    <div class="opanel" id="opanel-blanches">
+      <div class="tabs">
+        <button data-btab="letales" class="active">☠️ Létales</button>
+        <button data-btab="non_letales">🥊 Non létales</button>
+      </div>
+
+      <div class="btabpanel active" id="bpanel-letales">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="margin-bottom:0;border-bottom:none;padding-bottom:0;">☠️ Armes létales</h3>
+            <button class="ghost" id="btn-new-letales">➕ Ajouter une arme</button>
+          </div>
+          <div style="border-bottom:1px dashed var(--line);margin:10px 0 14px;"></div>
+          <form class="entry" id="form-letales" style="display:none;margin-bottom:16px;">
+            <div class="field"><label>Nom</label><input type="text" id="bl-nom" required></div>
+            <div class="field"><label>Prix</label><input type="number" id="bl-prix" min="0" step="1" required></div>
+            <div class="field"><label>Stock</label><input type="number" id="bl-stock" min="0" step="1" value="0"></div>
+            <button class="submit" type="submit">Ajouter</button>
+            <button class="ghost" type="button" id="btn-cancel-letales">Annuler</button>
+          </form>
+          <div class="arme-grid" id="grid-letales"></div>
+        </div>
+      </div>
+
+      <div class="btabpanel" id="bpanel-non_letales">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="margin-bottom:0;border-bottom:none;padding-bottom:0;">🥊 Armes non létales</h3>
+            <button class="ghost" id="btn-new-nonletales">➕ Ajouter une arme</button>
+          </div>
+          <div style="border-bottom:1px dashed var(--line);margin:10px 0 14px;"></div>
+          <form class="entry" id="form-nonletales" style="display:none;margin-bottom:16px;">
+            <div class="field"><label>Nom</label><input type="text" id="bn-nom" required></div>
+            <div class="field"><label>Prix</label><input type="number" id="bn-prix" min="0" step="1" required></div>
+            <div class="field"><label>Stock</label><input type="number" id="bn-stock" min="0" step="1" value="0"></div>
+            <button class="submit" type="submit">Ajouter</button>
+            <button class="ghost" type="button" id="btn-cancel-nonletales">Annuler</button>
+          </form>
+          <div class="arme-grid" id="grid-non_letales"></div>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -61,12 +117,30 @@
   const membre = initShell('armes', 'Armurerie');
   if (membre) {
 
-    document.querySelectorAll('.tabs button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    document.querySelectorAll('.tabs').forEach(tabBar => {
+      tabBar.querySelectorAll('button[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabBar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+        });
+      });
+      tabBar.querySelectorAll('button[data-otab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('button[data-otab]').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.opanel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('opanel-' + btn.dataset.otab).classList.add('active');
+        });
+      });
+      tabBar.querySelectorAll('button[data-btab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabBar.querySelectorAll('button[data-btab]').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.btabpanel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('bpanel-' + btn.dataset.btab).classList.add('active');
+        });
       });
     });
 
@@ -182,31 +256,35 @@
       });
       el.querySelectorAll('.upload-image').forEach(inp => {
         inp.addEventListener('change', () => {
-          const fichier = inp.files[0];
-          if (!fichier) return;
-          const reader = new FileReader();
-          reader.onload = () => {
-            const img = new Image();
-            img.onload = () => {
-              const taille = 220; // résolution stockée plus élevée pour rester net à l'affichage
-              const canvas = document.createElement('canvas');
-              canvas.width = taille; canvas.height = taille;
-              const ctx = canvas.getContext('2d');
-              ctx.imageSmoothingEnabled = true;
-              ctx.imageSmoothingQuality = 'high';
-              // recadrage carré centré
-              const ratio = Math.max(taille / img.width, taille / img.height);
-              const w = img.width * ratio, h = img.height * ratio;
-              ctx.drawImage(img, (taille - w) / 2, (taille - h) / 2, w, h);
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-              db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(dataUrl)
-                .then(() => toast('Image enregistrée.'));
-            };
-            img.src = reader.result;
-          };
-          reader.readAsDataURL(fichier);
+          compresserImage(inp.files[0], dataUrl => {
+            db.ref(`armes/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(dataUrl)
+              .then(() => toast('Image enregistrée.'));
+          });
         });
       });
+    }
+
+    // Compresse une image uploadée en carré net (220px, JPEG qualité 0.95) et renvoie un data URL
+    function compresserImage(fichier, callback) {
+      if (!fichier) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const taille = 220;
+          const canvas = document.createElement('canvas');
+          canvas.width = taille; canvas.height = taille;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          const ratio = Math.max(taille / img.width, taille / img.height);
+          const w = img.width * ratio, h = img.height * ratio;
+          ctx.drawImage(img, (taille - w) / 2, (taille - h) / 2, w, h);
+          callback(canvas.toDataURL('image/jpeg', 0.95));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(fichier);
     }
 
     seedSiVide()
@@ -217,6 +295,101 @@
           ['pistolet', 'automatique', 'pompe', 'lourdes'].forEach(cat => renderCategorie(cat, data[cat]));
         });
       });
+
+    // ---- ARMES BLANCHES (libre, sans catalogue prédéfini) ----
+    function setupArmeBlanche(sousCat, prefixe) {
+      const peutModifier = canManage(membre);
+      if (peutModifier) document.getElementById('btn-new-' + prefixe).style.display = 'inline-block';
+      else document.getElementById('btn-new-' + prefixe).style.display = 'none';
+
+      document.getElementById('btn-new-' + prefixe).addEventListener('click', () => {
+        document.getElementById('form-' + prefixe).style.display = 'flex';
+        document.getElementById('btn-new-' + prefixe).style.display = 'none';
+      });
+      document.getElementById('btn-cancel-' + prefixe).addEventListener('click', () => {
+        document.getElementById('form-' + prefixe).style.display = 'none';
+        document.getElementById('btn-new-' + prefixe).style.display = 'inline-block';
+        document.getElementById('form-' + prefixe).reset();
+      });
+
+      const px = prefixe === 'letales' ? 'bl' : 'bn';
+      document.getElementById('form-' + prefixe).addEventListener('submit', e => {
+        e.preventDefault();
+        const nom = document.getElementById(px + '-nom').value.trim();
+        const prix = parseFloat(document.getElementById(px + '-prix').value);
+        const stock = parseInt(document.getElementById(px + '-stock').value, 10) || 0;
+        if (!nom || isNaN(prix)) return;
+        db.ref(`armes_blanches/${sousCat}/${uid()}`).set({ nom, prix, stock, image_url: '' });
+        document.getElementById('form-' + prefixe).reset();
+        document.getElementById('form-' + prefixe).style.display = 'none';
+        document.getElementById('btn-new-' + prefixe).style.display = 'inline-block';
+      });
+
+      function render(armesObj) {
+        const el = document.getElementById('grid-' + sousCat);
+        const armes = entries(armesObj || {}).sort((a, b) => a[1].nom.localeCompare(b[1].nom));
+        if (armes.length === 0) { el.innerHTML = '<div class="empty">Aucune arme ajoutée pour le moment.</div>'; return; }
+
+        el.innerHTML = armes.map(([id, a]) => `
+          <div class="arme-card">
+            <div class="arme-top">
+              <div class="arme-icon">${a.image_url ? `<img src="${a.image_url}" alt="${a.nom}">` : '🗡️'}</div>
+              <div class="arme-nom">${a.nom}</div>
+            </div>
+            <div class="arme-row">
+              <label>Stock</label>
+              ${peutModifier
+                ? `<input type="number" class="wb-stock" data-cat="${sousCat}" data-id="${id}" min="0" step="1" value="${a.stock || 0}">`
+                : `<span>${a.stock || 0}</span>`}
+            </div>
+            <div class="arme-row">
+              <label>Prix</label>
+              ${peutModifier
+                ? `<input type="number" class="wb-prix" data-cat="${sousCat}" data-id="${id}" min="0" step="1" value="${a.prix || 0}">`
+                : `<span>${fmtMoney(a.prix)}</span>`}
+            </div>
+            ${peutModifier ? `
+            <div class="arme-row">
+              <label>Image</label>
+              <label class="ghost arme-upload-btn">
+                📷 Choisir une image
+                <input type="file" accept="image/*" class="wb-upload" data-cat="${sousCat}" data-id="${id}" style="display:none;">
+              </label>
+            </div>
+            <button class="ghost wb-del" data-cat="${sousCat}" data-id="${id}">✕ Supprimer</button>` : ''}
+          </div>
+        `).join('');
+
+        el.querySelectorAll('.wb-stock').forEach(inp => {
+          inp.addEventListener('change', () => {
+            const v = parseInt(inp.value, 10);
+            db.ref(`armes_blanches/${inp.dataset.cat}/${inp.dataset.id}/stock`).set(isNaN(v) || v < 0 ? 0 : v);
+          });
+        });
+        el.querySelectorAll('.wb-prix').forEach(inp => {
+          inp.addEventListener('change', () => {
+            const v = parseFloat(inp.value);
+            db.ref(`armes_blanches/${inp.dataset.cat}/${inp.dataset.id}/prix`).set(isNaN(v) || v < 0 ? 0 : v);
+          });
+        });
+        el.querySelectorAll('.wb-upload').forEach(inp => {
+          inp.addEventListener('change', () => {
+            compresserImage(inp.files[0], dataUrl => {
+              db.ref(`armes_blanches/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(dataUrl)
+                .then(() => toast('Image enregistrée.'));
+            });
+          });
+        });
+        el.querySelectorAll('.wb-del').forEach(btn => {
+          btn.addEventListener('click', () => db.ref(`armes_blanches/${btn.dataset.cat}/${btn.dataset.id}`).remove());
+        });
+      }
+
+      db.ref('armes_blanches/' + sousCat).on('value', snap => render(snap.val()));
+    }
+
+    setupArmeBlanche('letales', 'letales');
+    setupArmeBlanche('non_letales', 'nonletales');
   }
 </script>
 </body>
