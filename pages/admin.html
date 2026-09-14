@@ -190,6 +190,9 @@
     document.getElementById('btn-bloquer-semaine').addEventListener('click', async () => {
       const activeId = (await db.ref('config/semaine_active_id').get()).val();
       if (!activeId) { toast('Aucune semaine active.'); return; }
+      const semaine = (await db.ref('semaines/' + activeId).get()).val();
+      const ok = confirm(`Bloquer "${semaine ? semaine.nom : 'la semaine en cours'}" maintenant et démarrer une nouvelle semaine ?`);
+      if (!ok) return;
       await db.ref('semaines/' + activeId).update({ bloquee: true, closedAt: new Date().toISOString() });
       await ensureActiveWeek();
       toast('Semaine bloquée, nouvelle semaine créée.');
