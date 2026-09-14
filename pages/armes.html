@@ -46,6 +46,7 @@
     <div class="tabs">
       <button data-otab="feu" class="active">🔫 Armes à feu</button>
       <button data-otab="blanches">🗡️ Armes blanches</button>
+      <button data-otab="munitions">🧨 Munitions</button>
     </div>
 
     <!-- ARMES À FEU -->
@@ -114,6 +115,30 @@
           </form>
           <div class="arme-grid" id="grid-non_letales"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- MUNITIONS -->
+    <div class="opanel" id="opanel-munitions">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <h3 style="margin-bottom:0;border-bottom:none;padding-bottom:0;">🧨 Munitions</h3>
+          <button class="ghost" id="btn-new-munitions">➕ Ajouter une munition</button>
+        </div>
+        <div style="border-bottom:1px dashed var(--line);margin:10px 0 14px;"></div>
+        <form class="arme-card" id="form-munitions" style="display:none;">
+          <div class="arme-top">
+            <div class="arme-icon">🧨</div>
+            <input type="text" id="mu-nom" placeholder="Type de munition" required style="font-family:'EB Garamond',serif;font-size:15px;">
+          </div>
+          <div class="arme-row"><label>Stock</label><input type="number" id="mu-stock" min="0" step="1" value="0"></div>
+          <div class="arme-row"><label>Prix</label><input type="number" id="mu-prix" min="0" step="1" required></div>
+          <div style="display:flex;gap:8px;">
+            <button class="submit" type="submit" style="flex:1;">Ajouter</button>
+            <button class="ghost" type="button" id="btn-cancel-munitions">Annuler</button>
+          </div>
+        </form>
+        <div class="arme-grid" id="grid-munitions"></div>
       </div>
     </div>
   </main>
@@ -307,7 +332,7 @@
       });
 
     // ---- ARMES BLANCHES (libre, sans catalogue prédéfini) ----
-    function setupArmeBlanche(sousCat, prefixe) {
+    function setupArmeBlanche(nodeRoot, sousCat, prefixe, px, iconFallback) {
       const peutModifier = canManage(membre);
       if (peutModifier) document.getElementById('btn-new-' + prefixe).style.display = 'inline-block';
       else document.getElementById('btn-new-' + prefixe).style.display = 'none';
@@ -322,40 +347,41 @@
         document.getElementById('form-' + prefixe).reset();
       });
 
-      const px = prefixe === 'letales' ? 'bl' : 'bn';
+      const chemin = sousCat ? `${nodeRoot}/${sousCat}` : nodeRoot;
+
       document.getElementById('form-' + prefixe).addEventListener('submit', e => {
         e.preventDefault();
         const nom = document.getElementById(px + '-nom').value.trim();
         const prix = parseFloat(document.getElementById(px + '-prix').value);
         const stock = parseInt(document.getElementById(px + '-stock').value, 10) || 0;
         if (!nom || isNaN(prix)) return;
-        db.ref(`armes_blanches/${sousCat}/${uid()}`).set({ nom, prix, stock, image_url: '' });
+        db.ref(`${chemin}/${uid()}`).set({ nom, prix, stock, image_url: '' });
         document.getElementById('form-' + prefixe).reset();
         document.getElementById('form-' + prefixe).style.display = 'none';
         document.getElementById('btn-new-' + prefixe).style.display = 'inline-block';
       });
 
       function render(armesObj) {
-        const el = document.getElementById('grid-' + sousCat);
+        const el = document.getElementById('grid-' + (sousCat || prefixe));
         const armes = entries(armesObj || {}).sort((a, b) => a[1].nom.localeCompare(b[1].nom));
-        if (armes.length === 0) { el.innerHTML = '<div class="empty">Aucune arme ajoutée pour le moment.</div>'; return; }
+        if (armes.length === 0) { el.innerHTML = '<div class="empty">Rien d\'ajouté pour le moment.</div>'; return; }
 
         el.innerHTML = armes.map(([id, a]) => `
           <div class="arme-card">
             <div class="arme-top">
-              <div class="arme-icon">${a.image_url ? `<img src="${a.image_url}" alt="${a.nom}">` : '🗡️'}</div>
+              <div class="arme-icon">${a.image_url ? `<img src="${a.image_url}" alt="${a.nom}">` : iconFallback}</div>
               <div class="arme-nom">${a.nom}</div>
             </div>
             <div class="arme-row">
               <label>Stock</label>
               ${peutModifier
-                ? `<input type="number" class="wb-stock" data-cat="${sousCat}" data-id="${id}" min="0" step="1" value="${a.stock || 0}">`
+                ? `<input type="number" class="wb-stock" data-id="${id}" min="0" step="1" value="${a.stock || 0}">`
                 : `<span>${a.stock || 0}</span>`}
             </div>
             <div class="arme-row">
               <label>Prix</label>
               ${peutModifier
-                ? `<input type="number" class="wb-prix" data-cat="${sousCat}" data-id="${id}" min="0" step="1" value="${a.prix || 0}">`
+                ? `<input type="number" class="wb-prix" data-id="${id}" min="0" step="1" value="${a.prix || 0}">`
                 : `<span>${fmtMoney(a.prix)}</span>`}
             </div>
             ${peutModifier ? `
@@ -363,43 +389,44 @@
               <label>Image</label>
               <label class="ghost arme-upload-btn">
                 📷 Choisir une image
-                <input type="file" accept="image/*" class="wb-upload" data-cat="${sousCat}" data-id="${id}" style="display:none;">
+                <input type="file" accept="image/*" class="wb-upload" data-id="${id}" style="display:none;">
               </label>
             </div>
-            <button class="ghost wb-del" data-cat="${sousCat}" data-id="${id}">✕ Supprimer</button>` : ''}
+            <button class="ghost wb-del" data-id="${id}">✕ Supprimer</button>` : ''}
           </div>
         `).join('');
 
         el.querySelectorAll('.wb-stock').forEach(inp => {
           inp.addEventListener('change', () => {
             const v = parseInt(inp.value, 10);
-            db.ref(`armes_blanches/${inp.dataset.cat}/${inp.dataset.id}/stock`).set(isNaN(v) || v < 0 ? 0 : v);
+            db.ref(`${chemin}/${inp.dataset.id}/stock`).set(isNaN(v) || v < 0 ? 0 : v);
           });
         });
         el.querySelectorAll('.wb-prix').forEach(inp => {
           inp.addEventListener('change', () => {
             const v = parseFloat(inp.value);
-            db.ref(`armes_blanches/${inp.dataset.cat}/${inp.dataset.id}/prix`).set(isNaN(v) || v < 0 ? 0 : v);
+            db.ref(`${chemin}/${inp.dataset.id}/prix`).set(isNaN(v) || v < 0 ? 0 : v);
           });
         });
         el.querySelectorAll('.wb-upload').forEach(inp => {
           inp.addEventListener('change', () => {
             compresserImage(inp.files[0], dataUrl => {
-              db.ref(`armes_blanches/${inp.dataset.cat}/${inp.dataset.id}/image_url`).set(dataUrl)
+              db.ref(`${chemin}/${inp.dataset.id}/image_url`).set(dataUrl)
                 .then(() => toast('Image enregistrée.'));
             });
           });
         });
         el.querySelectorAll('.wb-del').forEach(btn => {
-          btn.addEventListener('click', () => db.ref(`armes_blanches/${btn.dataset.cat}/${btn.dataset.id}`).remove());
+          btn.addEventListener('click', () => db.ref(`${chemin}/${btn.dataset.id}`).remove());
         });
       }
 
-      db.ref('armes_blanches/' + sousCat).on('value', snap => render(snap.val()));
+      db.ref(chemin).on('value', snap => render(snap.val()));
     }
 
-    setupArmeBlanche('letales', 'letales');
-    setupArmeBlanche('non_letales', 'nonletales');
+    setupArmeBlanche('armes_blanches', 'letales', 'letales', 'bl', '🗡️');
+    setupArmeBlanche('armes_blanches', 'non_letales', 'nonletales', 'bn', '🗡️');
+    setupArmeBlanche('munitions', null, 'munitions', 'mu', '🧨');
   }
 </script>
 </body>
