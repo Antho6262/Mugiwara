@@ -204,7 +204,7 @@ async function computeSoldes() {
   });
   entries(gSnap.val()).filter(([id, g]) => g.resultat !== 'Échec').forEach(([id, g]) => {
     const montant = g.montant || 0;
-    solde_sale += montant; // le montant total va au groupe
+    solde_propre += montant; // le montant total va au groupe, en propre
     const part = (g.count || 0) * cfg.taux_cambriolage; // part du membre = tarif fixe
     parMembre[g.membre_id] = (parMembre[g.membre_id] || 0) + part;
   });
