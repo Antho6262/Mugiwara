@@ -18,6 +18,7 @@
     <div class="tabs">
       <button data-tab="achat" class="active">🛒 Achat</button>
       <button data-tab="vente">💸 Vente</button>
+      <button data-tab="arme">🔫 Achat / Vente d'arme</button>
     </div>
 
     <div class="card">
@@ -49,6 +50,27 @@
           <tbody id="achat-table"></tbody>
         </table>
         <div class="grand" id="achat-grand"></div>
+      </div>
+    </div>
+
+    <!-- ARMES -->
+    <div class="tabpanel" id="panel-arme">
+      <div class="card">
+        <h3>Achat / Vente d'arme</h3>
+        <form class="entry" id="form-arme">
+          <div class="field"><label>Opération</label>
+            <select id="w-sens"><option value="achat">🛒 Achat (stock +)</option><option value="vente">💸 Vente (stock −)</option></select>
+          </div>
+          <div class="field"><label>Arme (Armurerie)</label><select id="w-arme" required></select></div>
+          <div class="field"><label>Quantité</label><input type="number" id="w-qty" min="1" step="1" value="1" required></div>
+          <div class="field"><label>Prix total ($)</label><input type="number" id="w-prix" min="0" step="1" required></div>
+          <div class="field"><label>Argent</label>
+            <select id="w-typeargent"><option value="sale">Sale</option><option value="propre">Propre</option></select>
+          </div>
+          <div class="field"><label>Notes</label><input type="text" id="w-notes" placeholder="optionnel"></div>
+          <button class="submit" type="submit">Enregistrer</button>
+        </form>
+        <div class="note-hint">Met à jour automatiquement le stock de l'Armurerie. L'opération apparaît aussi dans l'historique des achats / ventes et dans les soldes. Supprimer la ligne remet le stock comme avant.</div>
       </div>
     </div>
 
@@ -167,12 +189,63 @@
       db.ref('transactions').on('value', snap => { lastSnap = snap; render(); });
     }
 
+    // ---- Achat / Vente d'arme (lié au stock de l'Armurerie) ----
+    const CATS_ARMES = [
+      ['armes/pistolet', '🔫 Armes de poing'], ['armes/automatique', '💥 Armes automatiques'],
+      ['armes/pompe', '🔴 Fusils à pompe'], ['armes/lourdes', '🎯 Armes lourdes'],
+      ['armes_blanches/letales', '☠️ Armes blanches létales'], ['armes_blanches/non_letales', '🥊 Armes blanches non létales'],
+      ['munitions', '🧨 Munitions']
+    ];
+    const ARMES_DISPO = {};
+    function renderSelectArmes() {
+      const sel = document.getElementById('w-arme');
+      const cur = sel.value;
+      sel.innerHTML = CATS_ARMES.map(([chemin, label]) => {
+        const items = entries(ARMES_DISPO[chemin] || {}).sort((a, b) => (a[1].nom || '').localeCompare(b[1].nom || ''));
+        if (!items.length) return '';
+        return `<optgroup label="${label}">${items.map(([id, a]) => `<option value="${chemin}|${id}">${a.nom} (stock ${a.stock || 0})</option>`).join('')}</optgroup>`;
+      }).join('') || '<option value="">Aucune arme — vois la page Armurerie</option>';
+      if (cur) sel.value = cur;
+    }
+    CATS_ARMES.forEach(([chemin]) => db.ref(chemin).on('value', snap => { ARMES_DISPO[chemin] = snap.val() || {}; renderSelectArmes(); }));
+    const ajusterStockArme = (ref, delta) => db.ref(ref + '/stock').transaction(cur => Math.max(0, (cur || 0) + delta));
+
+    document.getElementById('form-arme').addEventListener('submit', async e => {
+      e.preventDefault();
+      const type = document.getElementById('w-sens').value;
+      const val = document.getElementById('w-arme').value;
+      const quantite = parseInt(document.getElementById('w-qty').value, 10);
+      const prix = parseFloat(document.getElementById('w-prix').value);
+      const type_argent = document.getElementById('w-typeargent').value;
+      const notes = document.getElementById('w-notes').value.trim();
+      if (!val || isNaN(quantite) || quantite < 1 || isNaN(prix)) return;
+      const [chemin, id] = val.split('|');
+      const arme = (ARMES_DISPO[chemin] || {})[id];
+      if (!arme) return;
+      if (type === 'vente' && (arme.stock || 0) < quantite) { toast(`Stock insuffisant (${arme.stock || 0} en stock).`); return; }
+      await db.ref('transactions/' + uid()).set({
+        type, produit_nom: arme.nom, quantite, prix, type_argent, notes,
+        arme_ref: `${chemin}/${id}`,
+        membre_id: membre.id, date: new Date().toISOString(), semaine_id: activeWeekId
+      });
+      await ajusterStockArme(`${chemin}/${id}`, type === 'achat' ? quantite : -quantite);
+      document.getElementById('form-arme').reset();
+      document.getElementById('w-qty').value = '1';
+      toast(type === 'achat' ? 'Achat enregistré, stock mis à jour.' : 'Vente enregistrée, stock mis à jour.');
+    });
+
     setupTransactionType('achat', 'achat');
     setupTransactionType('vente', 'vente');
     chargerSemaines();
 
     document.body.addEventListener('click', e => {
-      if (e.target.matches('.del')) db.ref('transactions/' + e.target.dataset.id).remove();
+      if (!e.target.matches('.del')) return;
+      const ref = db.ref('transactions/' + e.target.dataset.id);
+      ref.get().then(async s => {
+        const tx = s.val();
+        if (tx && tx.arme_ref) await ajusterStockArme(tx.arme_ref, tx.type === 'achat' ? -(tx.quantite || 0) : (tx.quantite || 0)); // annule l'effet sur le stock
+        return ref.remove();
+      });
     });
   }
 </script>
