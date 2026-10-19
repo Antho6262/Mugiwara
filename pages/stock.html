@@ -52,6 +52,19 @@
 
     let activeCat = null;
 
+    // ---- Purification (produits "purifiables") ----
+    const PURETES = ['brut', '50', '70', '90', '99'];
+    const labelPurete = p => p === 'brut' ? 'Non purifié' : p + '%';
+    const puretesVides = () => ({ brut: 0, '50': 0, '70': 0, '90': 0, '99': 0 });
+    const totalPurete = pu => PURETES.reduce((s, k) => s + (Number((pu || {})[k]) || 0), 0);
+    async function setPurete(catId, pid, niveau, valeur) {
+      const ref = db.ref(`stock/${catId}/produits/${pid}`);
+      const p = (await ref.get()).val() || {};
+      const pu = Object.assign(puretesVides(), p.purete || {});
+      pu[niveau] = Math.max(0, valeur);
+      await ref.update({ purete: pu, stock: totalPurete(pu) });
+    }
+
     db.ref('stock').on('value', snap => {
       const cats = entries(snap.val());
       const tabsEl = document.getElementById('cat-tabs');
@@ -99,6 +112,7 @@
             <div class="field"><label>Nom</label><input type="text" id="p-nom" required></div>
             <div class="field"><label>Prix</label><input type="number" id="p-prix" min="0" step="1" required></div>
             <div class="field"><label>Seuil d'alerte</label><input type="number" id="p-seuil" min="0" step="1" value="5"></div>
+            <div class="field"><label>Purifiable ?</label><select id="p-purifiable"><option value="0">Non</option><option value="1">Oui</option></select></div>
             <button class="submit" type="submit">Ajouter</button>
             <button class="ghost" type="button" id="btn-cancel-prod">Annuler</button>
           </form>` : ''}
@@ -113,22 +127,73 @@
                     <td>${canManage(membre)
                         ? `<input type="number" class="edit-prix" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.prix || 0}" style="width:90px;">`
                         : fmtMoney(p.prix)}</td>
-                    <td>${canManage(membre)
+                    <td>${p.purifiable ? `<span>${totalPurete(p.purete)}</span>` : canManage(membre)
                         ? `<input type="number" class="edit-stock ${(p.stock||0) <= (p.seuil||0) ? 'stock-low' : ''}" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.stock || 0}" style="width:80px;">`
                         : `<span class="${(p.stock || 0) <= (p.seuil || 0) ? 'amt' : ''}" style="${(p.stock||0) <= (p.seuil||0) ? 'color:var(--danger);' : ''}">${p.stock || 0}</span>`}</td>
                     <td>${p.seuil || 0}</td>
-                    <td style="display:flex;gap:6px;">
+                    <td style="display:flex;gap:6px;">${p.purifiable ? '<span class="empty">voir purétés</span>' : `
                       <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="-1">−</button>
-                      <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="1">+</button>
+                      <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="1">+</button>`}
                     </td>
-                    ${canManage(membre) ? `<td><button class="del" data-cat="${catId}" data-prod="${pid}">✕</button></td>` : ''}
+                    ${canManage(membre) ? `<td style="white-space:nowrap;"><button class="ghost tog-pur" data-cat="${catId}" data-prod="${pid}" title="Activer/désactiver la purification">🧪 ${p.purifiable ? 'ON' : 'OFF'}</button> <button class="del" data-cat="${catId}" data-prod="${pid}">✕</button></td>` : ''}
                   </tr>
+                  ${p.purifiable ? `<tr><td colspan="6" style="padding:6px 10px 14px;">
+                    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+                      ${PURETES.map(k => `<label style="display:flex;flex-direction:column;gap:3px;font-size:12px;">${labelPurete(k)}
+                        ${canManage(membre)
+                          ? `<input type="number" class="edit-pur" data-cat="${catId}" data-prod="${pid}" data-niv="${k}" min="0" step="1" value="${(p.purete || {})[k] || 0}" style="width:80px;">`
+                          : `<strong>${(p.purete || {})[k] || 0}</strong>`}</label>`).join('')}
+                    </div></td></tr>` : ''}
                 `).join('')}
             </tbody>
           </table>
         </div>
       `;
 
+      const purifiables = produits.filter(([, p]) => p.purifiable);
+      if (purifiables.length) {
+        panelsEl.insertAdjacentHTML('beforeend', `
+          <div class="card">
+            <h3>🧪 Purification</h3>
+            <form class="entry" id="form-purif">
+              <div class="field"><label>Produit</label><select id="pf-prod">${purifiables.map(([pid, p]) => `<option value="${pid}">${p.nom}</option>`).join('')}</select></div>
+              <div class="field"><label>De</label><select id="pf-de">${PURETES.slice(0, -1).map(k => `<option value="${k}">${labelPurete(k)}</option>`).join('')}</select></div>
+              <div class="field"><label>Vers</label><select id="pf-vers">${PURETES.slice(1).map(k => `<option value="${k}">${labelPurete(k)}</option>`).join('')}</select></div>
+              <div class="field"><label>Quantité</label><input type="number" id="pf-qty" min="1" step="1" value="1" required></div>
+              <button class="submit" type="submit">Purifier</button>
+            </form>
+            <div class="note-hint">Déplace la quantité d'un niveau de pureté vers un niveau supérieur. Le stock total ne change pas.</div>
+          </div>`);
+        document.getElementById('form-purif').addEventListener('submit', async e => {
+          e.preventDefault();
+          const pid = document.getElementById('pf-prod').value;
+          const de = document.getElementById('pf-de').value, vers = document.getElementById('pf-vers').value;
+          const qty = parseInt(document.getElementById('pf-qty').value, 10);
+          if (isNaN(qty) || qty < 1) return;
+          if (PURETES.indexOf(vers) <= PURETES.indexOf(de)) { toast('Choisis une pureté supérieure.'); return; }
+          const ref = db.ref(`stock/${catId}/produits/${pid}`);
+          const p = (await ref.get()).val() || {};
+          const pu = Object.assign(puretesVides(), p.purete || {});
+          if ((pu[de] || 0) < qty) { toast(`Pas assez de stock en ${labelPurete(de)}.`); return; }
+          pu[de] -= qty; pu[vers] += qty;
+          await ref.update({ purete: pu, stock: totalPurete(pu) });
+          toast('Purification effectuée.');
+        });
+      }
+      panelsEl.querySelectorAll('.edit-pur').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const v = parseInt(inp.value, 10);
+          setPurete(inp.dataset.cat, inp.dataset.prod, inp.dataset.niv, isNaN(v) ? 0 : v);
+        });
+      });
+      panelsEl.querySelectorAll('.tog-pur').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const ref = db.ref(`stock/${btn.dataset.cat}/produits/${btn.dataset.prod}`);
+          const p = (await ref.get()).val() || {};
+          if (p.purifiable) await ref.update({ purifiable: null, purete: null });
+          else await ref.update({ purifiable: true, purete: Object.assign(puretesVides(), { brut: p.stock || 0 }) });
+        });
+      });
       panelsEl.querySelectorAll('.adj').forEach(btn => {
         btn.addEventListener('click', () => {
           const ref = db.ref(`stock/${btn.dataset.cat}/produits/${btn.dataset.prod}/stock`);
@@ -177,7 +242,8 @@
         const prix = parseFloat(document.getElementById('p-prix').value);
         const seuil = parseInt(document.getElementById('p-seuil').value, 10) || 0;
         if (!nom || isNaN(prix)) return;
-        db.ref(`stock/${catId}/produits/${uid()}`).set({ nom, prix, seuil, stock: 0 });
+        const purifiable = document.getElementById('p-purifiable').value === '1';
+        db.ref(`stock/${catId}/produits/${uid()}`).set(purifiable ? { nom, prix, seuil, stock: 0, purifiable: true, purete: puretesVides() } : { nom, prix, seuil, stock: 0 });
         formProd.reset();
         document.getElementById('p-seuil').value = 5;
         formProd.style.display = 'none';

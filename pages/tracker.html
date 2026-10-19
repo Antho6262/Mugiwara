@@ -97,6 +97,9 @@
         <form class="entry" id="form-vente">
           <div class="field"><label>Membre</label><select id="v-member" required></select></div>
           <div class="field"><label>Produit</label><select id="v-produit"></select></div>
+          <div class="field" id="v-purete-wrap" style="display:none;"><label>Pureté vendue</label><select id="v-purete">
+            <option value="brut">Non purifié</option><option value="50">50%</option><option value="70">70%</option><option value="90">90%</option><option value="99">99%</option>
+          </select></div>
           <div class="field"><label>Pochons vendus 💊</label><input type="number" id="v-qty" min="1" step="1" value="1" required></div>
           <div class="field"><label>Montant total gagné ($)</label><input type="number" id="v-montant" min="0" step="1" required></div>
           <div class="field"><label>Résultat</label>
@@ -497,7 +500,7 @@
           const g = m ? gradeInfo(m.grade) : null;
           return `<tr>
             <td>${g ? g.emoji : '❓'} ${m ? m.prenom : 'Membre supprimé'}</td>
-            <td>${v.produit_nom || '—'}</td>
+            <td>${v.produit_nom || '—'}${v.purete ? ' — ' + (v.purete === 'brut' ? 'Non purifié' : v.purete + '%') : ''}</td>
             <td>💊 ${v.qty}</td>
             <td>${fmtMoney(v.montant)}</td>
             <td>${reussite ? '✅ Réussite' : `❌ Échec${v.raison ? ' — ' + v.raison : ''}`}</td>
@@ -526,10 +529,20 @@
       const raison = document.getElementById('v-raison').value.trim();
       const note = document.getElementById('v-note').value.trim();
       if (!membre_id || isNaN(qty) || qty < 1 || isNaN(montant)) return;
-      db.ref('ventes/' + uid()).set({ membre_id, produit_nom, resultat, raison, note, qty, montant, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
+      const purete = (produit_cat && PRODUITS_PURIFIABLES[produit_cat + '|' + produit_id]) ? document.getElementById('v-purete').value : '';
+      db.ref('ventes/' + uid()).set({ membre_id, produit_nom, ...(purete ? { purete } : {}), resultat, raison, note, qty, montant, date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId });
       if (produit_cat && produit_id) {
-        const ref = db.ref(`stock/${produit_cat}/produits/${produit_id}/stock`);
-        ref.get().then(s => ref.set(Math.max(0, (s.val() || 0) - qty))).catch(err => console.error(err));
+        const refProd = db.ref(`stock/${produit_cat}/produits/${produit_id}`);
+        refProd.get().then(s => {
+          const p = s.val() || {};
+          if (purete) {
+            const pu = Object.assign({ brut: 0, '50': 0, '70': 0, '90': 0, '99': 0 }, p.purete || {});
+            pu[purete] = Math.max(0, (pu[purete] || 0) - qty);
+            const total = Object.values(pu).reduce((a, b) => a + (Number(b) || 0), 0);
+            return refProd.update({ purete: pu, stock: total });
+          }
+          return refProd.update({ stock: Math.max(0, (p.stock || 0) - qty) });
+        }).catch(err => console.error(err));
       }
       document.getElementById('v-qty').value = '1';
       document.getElementById('v-montant').value = '';
@@ -550,9 +563,17 @@
       catsAffichees.forEach(([catId, cat]) => {
         entries(cat.produits).forEach(([pid, p]) => opts.push(`<option value="${catId}|${pid}">${p.nom}</option>`));
       });
+      PRODUITS_PURIFIABLES = {};
+      catsAffichees.forEach(([catId, cat]) => entries(cat.produits).forEach(([pid, p]) => { if (p.purifiable) PRODUITS_PURIFIABLES[catId + '|' + pid] = true; }));
       sel.innerHTML = opts.length ? opts.join('') : '<option value="">Aucun produit — crée-en dans Stock</option>';
       if (cur) sel.value = cur;
+      majPureteVente();
     });
+    let PRODUITS_PURIFIABLES = {};
+    function majPureteVente() {
+      document.getElementById('v-purete-wrap').style.display = PRODUITS_PURIFIABLES[document.getElementById('v-produit').value] ? '' : 'none';
+    }
+    document.getElementById('v-produit').addEventListener('change', majPureteVente);
 
     // ---- LABO ----
     function renderLabo() {
