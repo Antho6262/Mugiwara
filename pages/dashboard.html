@@ -27,10 +27,10 @@
     <div class="card">
       <h3>⏱️ Cooldown braquages</h3>
       <table>
-        <thead><tr><th>Braquage</th><th>Dernier</th><th>Prochain possible</th><th>Statut</th></tr></thead>
+        <thead><tr><th>Braquage</th><th>Statut</th><th>Se libère le</th></tr></thead>
         <tbody id="cooldown-body"></tbody>
       </table>
-      <div class="note-hint">Cooldown de 7 jours après le dernier braquage enregistré (réussite ou échec).</div>
+      <div class="note-hint">2 braquages par semaine : chacun se libère exactement 7 jours après sa date (réussite ou échec), ce qui garde le même intervalle entre les deux.</div>
     </div>
 
     <div class="card">
@@ -287,12 +287,13 @@
       `;
     });
 
-    // ---- Cooldown Fleeca / Armurerie (7 jours après le dernier enregistré) ----
+    // ---- Cooldown Fleeca / Armurerie : 2 par semaine glissante, chaque braquage se libère 7 jours après sa date ----
     const COOLDOWN_MS = 7 * 86400000;
-    const dernierBraquage = { fleecas: 0, armureries: 0 };
+    const MAX_PAR_SEMAINE = 2;
+    const datesBraquages = { fleecas: [], armureries: [] };
     ['fleecas', 'armureries'].forEach(noeud => {
       db.ref(noeud).on('value', snap => {
-        dernierBraquage[noeud] = entries(snap.val()).reduce((mx, [, r]) => Math.max(mx, r.date ? new Date(r.date).getTime() : 0), 0);
+        datesBraquages[noeud] = entries(snap.val()).map(([, r]) => r.date ? new Date(r.date).getTime() : 0).filter(Boolean).sort((x, y) => x - y);
         renderCooldown();
       });
     });
@@ -300,17 +301,19 @@
       const lignes = [['🏦 Fleeca', 'fleecas'], ['🔫 Armurerie', 'armureries']];
       const now = Date.now();
       document.getElementById('cooldown-body').innerHTML = lignes.map(([label, noeud]) => {
-        const dernier = dernierBraquage[noeud];
-        if (!dernier) return `<tr><td>${label}</td><td>—</td><td>—</td><td style="color:var(--gold);">✅ Disponible</td></tr>`;
-        const dispo = dernier + COOLDOWN_MS;
-        const diff = dispo - now;
-        let statut;
-        if (diff <= 0) statut = '<span style="color:var(--gold);">✅ Disponible</span>';
-        else {
+        const actifs = datesBraquages[noeud].filter(t => t + COOLDOWN_MS > now); // braquages encore "comptés" (< 7 jours)
+        const libres = Math.max(0, MAX_PAR_SEMAINE - actifs.length);
+        const fmtReste = diff => {
           const j = Math.floor(diff / 86400000), h = Math.floor((diff % 86400000) / 3600000), m = Math.floor((diff % 3600000) / 60000);
-          statut = `<span style="color:var(--danger);">⏳ ${j}j ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m</span>`;
-        }
-        return `<tr><td>${label}</td><td>${fmtDateHeure(new Date(dernier).toISOString())}</td><td>${fmtDateHeure(new Date(dispo).toISOString())}</td><td>${statut}</td></tr>`;
+          return `${j}j ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
+        };
+        const statut = libres > 0
+          ? `<span style="color:var(--gold);">✅ ${libres}/${MAX_PAR_SEMAINE} disponible${libres > 1 ? 's' : ''}</span>`
+          : `<span style="color:var(--danger);">⏳ Prochain dans ${fmtReste(actifs[actifs.length - MAX_PAR_SEMAINE] + COOLDOWN_MS - now)}</span>`;
+        const liberations = actifs.length
+          ? actifs.map(t => `${fmtDateHeure(new Date(t + COOLDOWN_MS).toISOString())} <span style="color:var(--muted);">(${fmtReste(t + COOLDOWN_MS - now)})</span>`).join('<br>')
+          : '—';
+        return `<tr><td>${label}</td><td>${statut}</td><td style="font-size:12px;">${liberations}</td></tr>`;
       }).join('');
     }
     setInterval(renderCooldown, 30000);
