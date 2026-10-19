@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Mugiwara — Planning</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .pl-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .pl-titre{font-family:'Pirata One',cursive;font-size:22px;color:var(--gold);text-align:center;flex:1;min-width:200px;}
+  .pl-titre small{display:block;font-family:'IM Fell English SC',serif;font-size:12px;letter-spacing:2px;color:var(--muted);}
+  .pl-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;}
+  .pl-jour{background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:8px;min-height:130px;display:flex;flex-direction:column;gap:6px;}
+  .pl-jour.today{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;}
+  .pl-jour h4{margin:0 0 2px;font-family:'IM Fell English SC',serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+  .pl-jour h4 b{display:block;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold);letter-spacing:0;}
+  .pl-evt{border-radius:7px;padding:5px 7px;font-size:12px;line-height:1.3;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);cursor:pointer;border-left:4px solid rgba(255,255,255,.45);word-break:break-word;}
+  .pl-evt .h{font-family:'JetBrains Mono',monospace;font-size:11px;opacity:.9;}
+  .pl-evt .n{opacity:.9;font-size:11px;margin-top:2px;}
+  .pl-evt .act{display:flex;gap:6px;margin-top:4px;}
+  .pl-evt button{background:rgba(0,0,0,.35);border:none;color:#fff;border-radius:5px;font-size:11px;padding:1px 6px;cursor:pointer;}
+  .pl-vide{color:var(--muted);font-size:11px;opacity:.6;}
+  .pl-swatches{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .pl-swatch{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;}
+  .pl-swatch.sel{border-color:#fff;box-shadow:0 0 0 2px var(--gold);}
+  @media(max-width:1000px){.pl-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  @media(max-width:640px){.pl-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="pagehead">
+      <h2 id="pagehead-title">Planning</h2>
+      <div class="rule"></div>
+    </div>
+
+    <div class="card">
+      <h3 id="pl-form-titre">Nouvel évènement</h3>
+      <form class="entry" id="form-evt">
+        <div class="field"><label>Titre</label><input type="text" id="e-titre" placeholder="Ex: Fleeca, Réunion…" required></div>
+        <div class="field"><label>Date</label><input type="date" id="e-date" required></div>
+        <div class="field"><label>Heure</label><input type="time" id="e-heure"></div>
+        <div class="field"><label>Fin (optionnel)</label><input type="time" id="e-fin"></div>
+        <div class="field"><label>Couleur</label>
+          <div class="pl-swatches" id="e-couleurs"></div>
+        </div>
+        <div class="field"><label>Note</label><input type="text" id="e-note" placeholder="optionnel"></div>
+        <button class="submit" type="submit" id="e-submit">Ajouter</button>
+        <button class="ghost" type="button" id="e-cancel" style="display:none;">Annuler la modification</button>
+      </form>
+    </div>
+
+    <div class="pl-nav">
+      <button class="ghost" id="pl-prev">‹ Semaine précédente</button>
+      <div class="pl-titre" id="pl-titre"></div>
+      <button class="ghost" id="pl-today">Cette semaine</button>
+      <button class="ghost" id="pl-next">Semaine suivante ›</button>
+    </div>
+    <div class="pl-grid" id="pl-grid"></div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/app.js"></script>
+<script>
+  const membre = initShell('planning', 'Planning');
+  if (membre) {
+    const COULEURS = ['#c0392b', '#e67e22', '#d8ad52', '#27ae60', '#16a085', '#2980b9', '#8e44ad', '#d35c9a', '#7f8c8d'];
+    const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    let couleur = COULEURS[0];
+    let offsetSemaines = 0;
+    let evenements = {};
+    let editId = null;
+
+    const pad = n => String(n).padStart(2, '0');
+    const cleJour = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const fmtCourt = d => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // ---- sélecteur de couleur ----
+    function renderCouleurs() {
+      const el = document.getElementById('e-couleurs');
+      el.innerHTML = COULEURS.map(c => `<button type="button" class="pl-swatch ${c === couleur ? 'sel' : ''}" data-c="${c}" style="background:${c};" title="${c}"></button>`).join('') +
+        `<input type="color" id="e-couleur-libre" value="${couleur}" title="Couleur personnalisée" style="width:32px;height:28px;padding:0;border:none;background:none;">`;
+      el.querySelectorAll('.pl-swatch').forEach(b => b.addEventListener('click', () => { couleur = b.dataset.c; renderCouleurs(); }));
+      document.getElementById('e-couleur-libre').addEventListener('input', e => { couleur = e.target.value; el.querySelectorAll('.pl-swatch').forEach(b => b.classList.remove('sel')); });
+    }
+    renderCouleurs();
+
+    // ---- semaine affichée : du dimanche 19h au dimanche suivant 19h ----
+    function debutSemaine() {
+      const d = new Date(startOfWeekSunday7pmISO());
+      d.setDate(d.getDate() + offsetSemaines * 7);
+      return d;
+    }
+
+    function render() {
+      const debut = debutSemaine();
+      const fin = new Date(debut); fin.setDate(fin.getDate() + 7);
+      document.getElementById('pl-titre').innerHTML =
+        `Semaine du ${fmtCourt(debut)}/${debut.getFullYear()} 19h → ${fmtCourt(fin)}/${fin.getFullYear()} 19h` +
+        `<small>${offsetSemaines === 0 ? 'SEMAINE EN COURS' : offsetSemaines > 0 ? `DANS ${offsetSemaines} SEMAINE${offsetSemaines > 1 ? 'S' : ''}` : `IL Y A ${-offsetSemaines} SEMAINE${offsetSemaines < -1 ? 'S' : ''}`}</small>`;
+
+      const auj = cleJour(new Date());
+      const parJour = {};
+      Object.entries(evenements).forEach(([id, ev]) => { (parJour[ev.date] = parJour[ev.date] || []).push([id, ev]); });
+
+      let html = '';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(debut); d.setDate(d.getDate() + i);
+        const cle = cleJour(d);
+        const liste = (parJour[cle] || []).sort((a, b) => (a[1].heure || '').localeCompare(b[1].heure || ''));
+        html += `<div class="pl-jour ${cle === auj ? 'today' : ''}">
+          <h4>${JOURS[d.getDay()]}<b>${fmtCourt(d)}</b></h4>
+          ${liste.length === 0 ? '<div class="pl-vide">—</div>' : liste.map(([id, ev]) => {
+            const peut = ev.par === membre.id || canManage(membre);
+            return `<div class="pl-evt" style="background:${esc(ev.couleur || COULEURS[0])};">
+              ${ev.heure ? `<div class="h">${esc(ev.heure)}${ev.fin ? ' → ' + esc(ev.fin) : ''}</div>` : ''}
+              <div><strong>${esc(ev.titre)}</strong></div>
+              ${ev.note ? `<div class="n">${esc(ev.note)}</div>` : ''}
+              ${peut ? `<div class="act"><button data-edit="${id}">✎</button><button data-del="${id}">✕</button></div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+      document.getElementById('pl-grid').innerHTML = html;
+    }
+
+    document.getElementById('pl-grid').addEventListener('click', e => {
+      const del = e.target.dataset.del, edit = e.target.dataset.edit;
+      if (del) { if (confirm('Supprimer cet évènement ?')) db.ref('planning/' + del).remove(); }
+      if (edit) commencerEdition(edit);
+    });
+    document.getElementById('pl-prev').addEventListener('click', () => { offsetSemaines--; render(); });
+    document.getElementById('pl-next').addEventListener('click', () => { offsetSemaines++; render(); });
+    document.getElementById('pl-today').addEventListener('click', () => { offsetSemaines = 0; render(); });
+
+    // ---- formulaire ----
+    function resetForm() {
+      editId = null;
+      document.getElementById('form-evt').reset();
+      document.getElementById('pl-form-titre').textContent = 'Nouvel évènement';
+      document.getElementById('e-submit').textContent = 'Ajouter';
+      document.getElementById('e-cancel').style.display = 'none';
+      couleur = COULEURS[0]; renderCouleurs();
+    }
+    function commencerEdition(id) {
+      const ev = evenements[id]; if (!ev) return;
+      editId = id;
+      document.getElementById('e-titre').value = ev.titre || '';
+      document.getElementById('e-date').value = ev.date || '';
+      document.getElementById('e-heure').value = ev.heure || '';
+      document.getElementById('e-fin').value = ev.fin || '';
+      document.getElementById('e-note').value = ev.note || '';
+      couleur = ev.couleur || COULEURS[0]; renderCouleurs();
+      document.getElementById('pl-form-titre').textContent = 'Modifier l\'évènement';
+      document.getElementById('e-submit').textContent = 'Enregistrer';
+      document.getElementById('e-cancel').style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    document.getElementById('e-cancel').addEventListener('click', resetForm);
+    document.getElementById('form-evt').addEventListener('submit', e => {
+      e.preventDefault();
+      const titre = document.getElementById('e-titre').value.trim();
+      const date = document.getElementById('e-date').value;
+      if (!titre || !date) return;
+      const data = {
+        titre, date, couleur,
+        heure: document.getElementById('e-heure').value,
+        fin: document.getElementById('e-fin').value,
+        note: document.getElementById('e-note').value.trim(),
+      };
+      if (editId) db.ref('planning/' + editId).update(data);
+      else db.ref('planning/' + uid()).set({ ...data, par: membre.id, createdAt: Date.now() });
+      toast(editId ? 'Évènement modifié.' : 'Évènement ajouté.');
+      // affiche la semaine de l'évènement créé
+      const [y, m, j] = date.split('-').map(Number);
+      const dEv = new Date(y, m - 1, j, 12);
+      const base = new Date(startOfWeekSunday7pmISO()); base.setHours(0, 0, 0, 0);
+      offsetSemaines = Math.floor(Math.round((dEv - base) / 86400000 - 0.5) / 7);
+      resetForm();
+      render();
+    });
+
+    db.ref('planning').on('value', snap => { evenements = snap.val() || {}; render(); });
+    render();
+  }
+</script>
+</body>
+</html>

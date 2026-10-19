@@ -3,6 +3,7 @@
 // ============================================================
 const NAV_ITEMS = [
   { page: 'dashboard',    icon: '🗺️', label: 'Dashboard',    file: 'dashboard.html' },
+  { page: 'planning',     icon: '📅', label: 'Planning',     file: 'planning.html' },
   { page: 'tracker',      icon: '🏴‍☠️', label: 'Tracker',      file: 'tracker.html' },
   { page: 'stock',        icon: '📦', label: 'Stock',        file: 'stock.html' },
   { page: 'armes',        icon: '🔫', label: 'Armurerie',    file: 'armes.html' },
