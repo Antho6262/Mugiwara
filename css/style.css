@@ -95,7 +95,8 @@ h1,h2,h3{font-family:'Pirata One',cursive;font-weight:400;letter-spacing:1px;mar
 /* ---------- FIELDS / BUTTONS (partagé partout) ---------- */
 .field{display:flex;flex-direction:column;gap:5px;}
 .field label{font-family:'IM Fell English SC',serif;font-size:12px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
-select, input[type=number], input[type=text], input[type=password], input[type=date]{
+select, input[type=number], input[type=text], input[type=password], input[type=date], input[type=time], input[type=datetime-local]{
+  color-scheme:dark;
   background:var(--bg-1);
   border:1px solid var(--line);
   color:var(--cream);
