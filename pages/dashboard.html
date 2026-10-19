@@ -25,6 +25,15 @@
     </div>
 
     <div class="card">
+      <h3>⏱️ Cooldown braquages</h3>
+      <table>
+        <thead><tr><th>Braquage</th><th>Dernier</th><th>Prochain possible</th><th>Statut</th></tr></thead>
+        <tbody id="cooldown-body"></tbody>
+      </table>
+      <div class="note-hint">Cooldown de 7 jours après le dernier braquage enregistré (réussite ou échec).</div>
+    </div>
+
+    <div class="card">
       <h3>🗺️ Route vers Raftel</h3>
       <div id="carte-tresor"></div>
     </div>
@@ -277,6 +286,34 @@
         <div class="stat"><div class="v">${fmtMoney(solde_propre)}</div><div class="l">💵 Argent propre</div></div>
       `;
     });
+
+    // ---- Cooldown Fleeca / Armurerie (7 jours après le dernier enregistré) ----
+    const COOLDOWN_MS = 7 * 86400000;
+    const dernierBraquage = { fleecas: 0, armureries: 0 };
+    ['fleecas', 'armureries'].forEach(noeud => {
+      db.ref(noeud).on('value', snap => {
+        dernierBraquage[noeud] = entries(snap.val()).reduce((mx, [, r]) => Math.max(mx, r.date ? new Date(r.date).getTime() : 0), 0);
+        renderCooldown();
+      });
+    });
+    function renderCooldown() {
+      const lignes = [['🏦 Fleeca', 'fleecas'], ['🔫 Armurerie', 'armureries']];
+      const now = Date.now();
+      document.getElementById('cooldown-body').innerHTML = lignes.map(([label, noeud]) => {
+        const dernier = dernierBraquage[noeud];
+        if (!dernier) return `<tr><td>${label}</td><td>—</td><td>—</td><td style="color:var(--gold);">✅ Disponible</td></tr>`;
+        const dispo = dernier + COOLDOWN_MS;
+        const diff = dispo - now;
+        let statut;
+        if (diff <= 0) statut = '<span style="color:var(--gold);">✅ Disponible</span>';
+        else {
+          const j = Math.floor(diff / 86400000), h = Math.floor((diff % 86400000) / 3600000), m = Math.floor((diff % 3600000) / 60000);
+          statut = `<span style="color:var(--danger);">⏳ ${j}j ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m</span>`;
+        }
+        return `<tr><td>${label}</td><td>${fmtDateHeure(new Date(dernier).toISOString())}</td><td>${fmtDateHeure(new Date(dispo).toISOString())}</td><td>${statut}</td></tr>`;
+      }).join('');
+    }
+    setInterval(renderCooldown, 30000);
 
     // ---- Compte à rebours vers la prochaine paye (fin de la semaine active = dimanche 19h) ----
     async function demarrerCountdown() {
