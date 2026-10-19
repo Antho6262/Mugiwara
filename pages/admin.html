@@ -20,6 +20,7 @@
       <button data-tab="taux">💰 Taux</button>
       <button data-tab="tresorerie">💵 Trésorerie</button>
       <button data-tab="quotas">📋 Quotas</button>
+      <button data-tab="typesaction">🏴‍☠️ Types d'action</button>
       <button data-tab="membres">👒 Membres</button>
       <button data-tab="stockadmin">📦 Stock</button>
       <button data-tab="permissions">👁️ Permissions</button>
@@ -100,6 +101,23 @@
         </div>
         <div class="note-hint">Un objectif à 0 ou vide n'affiche pas de barre de progression pour cette catégorie. Remis à zéro à chaque nouvelle semaine.</div>
         <div style="margin-top:16px;"><button class="submit" id="q-save">Enregistrer</button></div>
+      </div>
+    </div>
+
+    <!-- TYPES D'ACTION -->
+    <div class="tabpanel" id="panel-typesaction">
+      <div class="card">
+        <h3>Types d'action</h3>
+        <form id="form-type-action" class="grid cols-3">
+          <div class="field"><label>Emoji</label><input type="text" id="ta-emoji" maxlength="4" placeholder="💎"></div>
+          <div class="field"><label>Nom</label><input type="text" id="ta-nom" required placeholder="Braquage bijouterie"></div>
+          <div class="field" style="align-self:end;"><button class="submit" type="submit">Ajouter</button></div>
+        </form>
+        <table style="margin-top:16px;">
+          <thead><tr><th>Type</th><th></th></tr></thead>
+          <tbody id="ta-table"></tbody>
+        </table>
+        <div class="note-hint">Ces types apparaissent dans la liste « Type » du formulaire Action du tracker.</div>
       </div>
     </div>
 
@@ -311,6 +329,37 @@
       });
       db.ref('config/quotas').set(update);
       toast('Objectifs enregistrés.');
+    });
+
+    // ---- types d'action ----
+    const TYPES_DEFAUT = [
+      { emoji: '🛒', nom: 'Épicerie' }, { emoji: '🏧', nom: 'ATM' },
+      { emoji: '🚗', nom: 'Go fast' }, { emoji: '✳️', nom: 'Autre' }
+    ];
+    let typesActionActuels = null;
+    db.ref('config/types_action').on('value', snap => {
+      typesActionActuels = snap.val();
+      const liste = typesActionActuels ? Object.entries(typesActionActuels).map(([id, t]) => [id, t]) : null;
+      const rows = liste
+        ? liste.map(([id, t]) => `<tr><td>${t.emoji || ''} ${t.nom}</td><td><button class="del" data-id="${id}" data-type="type-action">✕</button></td></tr>`).join('')
+        : TYPES_DEFAUT.map(t => `<tr><td>${t.emoji} ${t.nom}</td><td class="empty">par défaut</td></tr>`).join('');
+      document.getElementById('ta-table').innerHTML = rows;
+    });
+    document.getElementById('form-type-action').addEventListener('submit', async e => {
+      e.preventDefault();
+      const nom = document.getElementById('ta-nom').value.trim();
+      const emoji = document.getElementById('ta-emoji').value.trim();
+      if (!nom) return;
+      if (!typesActionActuels) { // première personnalisation : on garde les types par défaut
+        for (const t of TYPES_DEFAUT) await db.ref('config/types_action').push(t);
+      }
+      await db.ref('config/types_action').push({ nom, emoji });
+      document.getElementById('ta-nom').value = '';
+      document.getElementById('ta-emoji').value = '';
+      toast('Type ajouté.');
+    });
+    document.getElementById('ta-table').addEventListener('click', e => {
+      if (e.target.matches('.del[data-type="type-action"]')) db.ref('config/types_action/' + e.target.dataset.id).remove();
     });
 
     // ---- membres ----

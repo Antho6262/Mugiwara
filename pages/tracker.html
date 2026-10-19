@@ -45,12 +45,7 @@
         <form class="entry" id="form-actions">
           <div class="field"><label>Membre</label><select id="a-member" required></select></div>
           <div class="field"><label>Type</label>
-            <select id="a-type">
-              <option value="Épicerie">🛒 Épicerie</option>
-              <option value="ATM">🏧 ATM</option>
-              <option value="Go fast">🚗 Go fast</option>
-              <option value="Autre">✳️ Autre</option>
-            </select>
+            <select id="a-type"></select>
           </div>
           <div class="field"><label>Montant total gagné ($)</label><input type="number" id="a-montant" min="0" step="1" required></div>
           <div class="field"><label>Résultat</label>
@@ -354,6 +349,24 @@
       document.getElementById('a-grand').textContent = 'Total réel gagné (groupe) : ' + fmtMoney(grand);
     }
     db.ref('actions').on('value', snap => { lastActionsSnap = snap; renderActions(); });
+
+    // Types d'action configurables dans Admin → Types d'action
+    const TYPES_ACTION_DEFAUT = [
+      { emoji: '🛒', nom: 'Épicerie' }, { emoji: '🏧', nom: 'ATM' },
+      { emoji: '🚗', nom: 'Go fast' }, { emoji: '✳️', nom: 'Autre' }
+    ];
+    db.ref('config/types_action').on('value', snap => {
+      const v = snap.val();
+      const types = v ? Object.values(v) : TYPES_ACTION_DEFAUT;
+      const sel = document.getElementById('a-type');
+      const courant = sel.value;
+      sel.innerHTML = types.map(t => {
+        const o = document.createElement('option');
+        o.value = t.nom; o.textContent = `${t.emoji || ''} ${t.nom}`.trim();
+        return o.outerHTML;
+      }).join('');
+      if (courant) sel.value = courant;
+    });
 
     document.getElementById('form-actions').addEventListener('submit', e => {
       e.preventDefault();
