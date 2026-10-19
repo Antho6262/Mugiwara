@@ -166,6 +166,7 @@
             </div>
             <div class="field" id="fl-raison-wrap" style="display:none;"><label>Raison de l'échec</label><input type="text" id="fl-raison" placeholder="optionnel"></div>
             <div class="field"><label>Note</label><input type="text" id="fl-note" placeholder="optionnel"></div>
+            <div class="field"><label>Date et heure (si passé)</label><input type="datetime-local" id="fl-date"></div>
             <button class="submit" type="submit">Ajouter</button>
           </div>
         </form>
@@ -194,6 +195,7 @@
             </div>
             <div class="field" id="ar-raison-wrap" style="display:none;"><label>Raison de l'échec</label><input type="text" id="ar-raison" placeholder="optionnel"></div>
             <div class="field"><label>Note</label><input type="text" id="ar-note" placeholder="optionnel"></div>
+            <div class="field"><label>Date et heure (si passé)</label><input type="datetime-local" id="ar-date"></div>
             <button class="submit" type="submit">Ajouter</button>
           </div>
         </form>
@@ -706,12 +708,15 @@
         const raison = document.getElementById(prefix + '-raison').value.trim();
         const note = document.getElementById(prefix + '-note').value.trim();
         if (membres_ids.length === 0 || isNaN(montant)) return;
+        const dateSaisie = document.getElementById(prefix + '-date').value;
+        const dateBraquage = dateSaisie ? new Date(dateSaisie).toISOString() : new Date().toISOString();
         db.ref(nodeName + '/' + uid()).set({
           membres_ids, montant, resultat, raison, note,
-          date: new Date().toISOString(), par: membre.id, semaine_id: activeWeekId
+          date: dateBraquage, par: membre.id, semaine_id: activeWeekId
         });
         document.getElementById(prefix + '-montant').value = '';
         document.getElementById(prefix + '-note').value = '';
+        document.getElementById(prefix + '-date').value = '';
         document.getElementById(prefix + '-raison').value = '';
         document.getElementById(prefix + '-raison-wrap').style.display = 'none';
         document.getElementById(prefix + '-resultat').value = 'Réussite';
