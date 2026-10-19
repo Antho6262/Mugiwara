@@ -36,6 +36,14 @@
       </div>
     </div>
 
+    <div class="card">
+      <h3>🎯 Restant à faire cette semaine</h3>
+      <table>
+        <thead><tr><th>Membre</th><th>Actions restantes</th><th>Vente restante</th></tr></thead>
+        <tbody id="restant-membres"></tbody>
+      </table>
+    </div>
+
     <div class="grid cols-3" id="soldes" style="margin-bottom:16px;grid-template-columns:repeat(2,1fr);max-width:600px;"></div>
     <div class="grid cols-3" id="cat-cards" style="margin-bottom:16px;"></div>
 
@@ -126,6 +134,27 @@
         <div class="stat"><div class="v">${fmtMoney(totalFleeca)}</div><div class="l">🏦 Fleeca</div></div>
         <div class="stat"><div class="v">${fmtMoney(totalArmurerie)}</div><div class="l">🔫 Armurerie</div></div>
       `;
+
+      // Compteur d'objectifs restants par membre (quotas Admin)
+      const quotas = cfg.quotas || {};
+      const fait = { actions: {}, vente: {} };
+      actionsF.forEach(([,a]) => { fait.actions[a.membre_id] = (fait.actions[a.membre_id] || 0) + 1; });
+      gofastsF.forEach(([,g]) => { fait.actions[g.membre_id] = (fait.actions[g.membre_id] || 0) + 1; });
+      ventesF.forEach(([,v]) => { fait.vente[v.membre_id] = (fait.vente[v.membre_id] || 0) + (v.qty || 0); });
+      const qa = quotas.actions || 0, qv = quotas.vente || 0;
+      const cartes = Object.entries(membres)
+        .filter(([,m]) => m.actif !== false && !m.invisible)
+        .map(([id, m]) => {
+          const g = gradeInfo(m.grade);
+          const ra = Math.max(0, qa - (fait.actions[id] || 0));
+          const rv = Math.max(0, qv - (fait.vente[id] || 0));
+          return `<tr>
+            <td>${g.emoji} ${m.prenom}</td>
+            <td class="amt">${qa > 0 ? ra : '—'}</td>
+            <td class="amt">${qv > 0 ? rv : '—'}</td>
+          </tr>`;
+        }).join('');
+      document.getElementById('restant-membres').innerHTML = cartes || '<tr><td colspan="3" class="empty">Aucun membre.</td></tr>';
 
       const rows = Object.entries(partParMembre)
         .map(([id, total]) => ({ id, total, m: membres[id] }))
