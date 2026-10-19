@@ -17,10 +17,10 @@
     display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;overflow:hidden;
   }
   .arme-icon img{width:100%;height:100%;object-fit:cover;}
-  .arme-nom{font-family:'EB Garamond',serif;font-size:17px;font-weight:600;}
+  .arme-nom{font-family:'Barlow',sans-serif;font-size:17px;font-weight:600;}
   .arme-muni{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
   .arme-row{display:flex;gap:8px;align-items:center;}
-  .arme-row label{font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;width:44px;flex-shrink:0;}
+  .arme-row label{font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;width:44px;flex-shrink:0;}
   .arme-row input{width:100%;padding:6px 8px;font-size:14px;}
   .arme-stock-low{border-color:var(--danger) !important;color:var(--danger) !important;}
   .arme-upload-btn{
@@ -81,7 +81,7 @@
           <form class="arme-card" id="form-letales" style="display:none;">
             <div class="arme-top">
               <div class="arme-icon">🗡️</div>
-              <input type="text" id="bl-nom" placeholder="Nom de l'arme" required style="font-family:'EB Garamond',serif;font-size:15px;">
+              <input type="text" id="bl-nom" placeholder="Nom de l'arme" required style="font-family:'Barlow',sans-serif;font-size:15px;">
             </div>
             <div class="arme-row"><label>Stock</label><input type="number" id="bl-stock" min="0" step="1" value="0"></div>
             <div class="arme-row"><label>Prix</label><input type="number" id="bl-prix" min="0" step="1" required></div>
@@ -104,7 +104,7 @@
           <form class="arme-card" id="form-nonletales" style="display:none;">
             <div class="arme-top">
               <div class="arme-icon">🥊</div>
-              <input type="text" id="bn-nom" placeholder="Nom de l'arme" required style="font-family:'EB Garamond',serif;font-size:15px;">
+              <input type="text" id="bn-nom" placeholder="Nom de l'arme" required style="font-family:'Barlow',sans-serif;font-size:15px;">
             </div>
             <div class="arme-row"><label>Stock</label><input type="number" id="bn-stock" min="0" step="1" value="0"></div>
             <div class="arme-row"><label>Prix</label><input type="number" id="bn-prix" min="0" step="1" required></div>
@@ -129,7 +129,7 @@
         <form class="arme-card" id="form-munitions" style="display:none;">
           <div class="arme-top">
             <div class="arme-icon">🧨</div>
-            <input type="text" id="mu-nom" placeholder="Type de munition" required style="font-family:'EB Garamond',serif;font-size:15px;">
+            <input type="text" id="mu-nom" placeholder="Type de munition" required style="font-family:'Barlow',sans-serif;font-size:15px;">
           </div>
           <div class="arme-row"><label>Stock</label><input type="number" id="mu-stock" min="0" step="1" value="0"></div>
           <div class="arme-row"><label>Prix</label><input type="number" id="mu-prix" min="0" step="1" required></div>

@@ -38,7 +38,6 @@ function initShell(pageKey, title) {
   document.getElementById('sidebar').innerHTML = `
     <div class="brand">
       <img src="../img/logo.png" alt="Les Mugiwara" class="brand-logo">
-      <h1>MUGIWARA</h1>
       <div class="tag">L'ÉQUIPAGE</div>
     </div>
     <div class="navlist">${navHtml}</div>
@@ -333,7 +332,7 @@ function fireConfetti() {
   document.body.appendChild(canvas);
   const ctx = canvas.getContext('2d');
 
-  const colors = ['#d8ad52', '#8b1f24', '#ecdfc0', '#c99a3d', '#5c7a4a'];
+  const colors = ['#d12bf2', '#f08cff', '#ffffff', '#8f1bb0', '#ff4dd8'];
   const pieces = Array.from({ length: 140 }, () => ({
     x: Math.random() * canvas.width,
     y: -20 - Math.random() * canvas.height * 0.3,
@@ -454,7 +453,7 @@ function demarrerAlertesPlanning() {
       document.body.appendChild(zone);
     }
     const box = document.createElement('div');
-    box.style.cssText = `background:${ev.couleur || '#c0392b'};color:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.5);`;
+    box.style.cssText = `background:${ev.couleur || '#d12bf2'};color:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.5);`;
     const titre = document.createElement('div');
     titre.style.cssText = 'font-weight:700;font-size:15px;';
     titre.textContent = '📅 ' + ev.titre;
