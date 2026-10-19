@@ -60,6 +60,7 @@ function initShell(pageKey, title) {
 
   ensureActiveWeek().catch(err => console.error('ensureActiveWeek', err));
   applyPermissions(membre, pageKey).catch(err => console.error('applyPermissions', err));
+  try { demarrerAlertesPlanning(); } catch (err) { console.error('alertesPlanning', err); }
 
   return membre;
 }
@@ -410,4 +411,81 @@ function capitaineDuJour(membresActifs) {
   const index = hash % ids.length;
   const id = ids[index];
   return membresActifs.find(([mid]) => mid === id) || null;
+}
+
+
+// ------------------------------------------------------------
+// Alertes Planning — affiche une alerte (bannière + son + notification
+// navigateur si autorisée) quand l'heure d'un évènement arrive.
+// Fonctionne sur toutes les pages tant que le site est ouvert.
+// ------------------------------------------------------------
+function demarrerAlertesPlanning() {
+  let evenements = {};
+  const FENETRE_MS = 10 * 60 * 1000; // alerte encore affichée si le site est ouvert dans les 10 min après l'heure
+
+  const dejaAlerte = cle => { try { return localStorage.getItem(cle) === '1'; } catch (e) { return false; } };
+  const marquerAlerte = cle => { try { localStorage.setItem(cle, '1'); } catch (e) {} };
+
+  // demande l'autorisation des notifications au premier clic (un geste utilisateur est requis)
+  if ('Notification' in window && Notification.permission === 'default') {
+    document.addEventListener('click', () => { try { Notification.requestPermission(); } catch (e) {} }, { once: true });
+  }
+
+  function bip() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.25, 0.5].forEach(delai => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + delai);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delai + 0.2);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + delai); osc.stop(ctx.currentTime + delai + 0.2);
+      });
+    } catch (e) {}
+  }
+
+  function afficherAlerte(ev) {
+    let zone = document.getElementById('planning-alertes');
+    if (!zone) {
+      zone = document.createElement('div');
+      zone.id = 'planning-alertes';
+      zone.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;max-width:340px;';
+      document.body.appendChild(zone);
+    }
+    const box = document.createElement('div');
+    box.style.cssText = `background:${ev.couleur || '#c0392b'};color:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.5);`;
+    const titre = document.createElement('div');
+    titre.style.cssText = 'font-weight:700;font-size:15px;';
+    titre.textContent = '📅 ' + ev.titre;
+    const sous = document.createElement('div');
+    sous.style.cssText = 'font-size:13px;margin-top:3px;opacity:.95;';
+    sous.textContent = 'C\'est l\'heure' + (ev.heure ? ' (' + ev.heure + ')' : '') + (ev.note ? ' — ' + ev.note : '');
+    const ok = document.createElement('button');
+    ok.textContent = 'OK';
+    ok.style.cssText = 'margin-top:8px;background:rgba(0,0,0,.35);border:none;color:#fff;border-radius:6px;padding:3px 14px;cursor:pointer;';
+    ok.addEventListener('click', () => box.remove());
+    box.append(titre, sous, ok);
+    zone.appendChild(box);
+    bip();
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try { new Notification('📅 ' + ev.titre, { body: sous.textContent }); } catch (e) {}
+    }
+  }
+
+  function verifier() {
+    const now = Date.now();
+    Object.entries(evenements).forEach(([id, ev]) => {
+      if (!ev || !ev.date || !ev.heure) return;
+      const t = new Date(ev.date + 'T' + ev.heure).getTime();
+      if (isNaN(t) || now < t || now - t > FENETRE_MS) return;
+      const cle = `planning_alerte_${id}_${ev.date}_${ev.heure}`;
+      if (dejaAlerte(cle)) return;
+      marquerAlerte(cle);
+      afficherAlerte(ev);
+    });
+  }
+
+  db.ref('planning').on('value', snap => { evenements = snap.val() || {}; verifier(); });
+  setInterval(verifier, 15000);
 }
