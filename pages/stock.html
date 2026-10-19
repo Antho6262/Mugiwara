@@ -51,6 +51,7 @@
     });
 
     let activeCat = null;
+    const ouverts = new Set(); // sous-blocs purétés ouverts (conservés entre les rafraîchissements)
 
     // ---- Purification (produits "purifiables") ----
     const PURETES = ['brut', '50', '70', '90', '99'];
@@ -137,13 +138,15 @@
                     </td>
                     ${canManage(membre) ? `<td style="white-space:nowrap;"><button class="ghost tog-pur" data-cat="${catId}" data-prod="${pid}" title="Activer/désactiver la purification">🧪 ${p.purifiable ? 'ON' : 'OFF'}</button> <button class="del" data-cat="${catId}" data-prod="${pid}">✕</button></td>` : ''}
                   </tr>
-                  ${p.purifiable ? `<tr><td colspan="6" style="padding:6px 10px 14px;">
-                    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+                  ${p.purifiable ? `<tr><td colspan="6" style="padding:0 10px 12px;">
+                    <details data-pid="${pid}" ${ouverts.has(pid) ? 'open' : ''} style="background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:8px 12px;">
+                    <summary style="cursor:pointer;font-size:13px;color:var(--muted);">🧪 Puretés — ${PURETES.filter(k => (p.purete || {})[k] > 0).map(k => labelPurete(k) + ' : ' + p.purete[k]).join(' · ') || 'vide'}</summary>
+                    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;">
                       ${PURETES.map(k => `<label style="display:flex;flex-direction:column;gap:3px;font-size:12px;">${labelPurete(k)}
                         ${canManage(membre)
                           ? `<input type="number" class="edit-pur" data-cat="${catId}" data-prod="${pid}" data-niv="${k}" min="0" step="1" value="${(p.purete || {})[k] || 0}" style="width:80px;">`
                           : `<strong>${(p.purete || {})[k] || 0}</strong>`}</label>`).join('')}
-                    </div></td></tr>` : ''}
+                    </div></details></td></tr>` : ''}
                 `).join('')}
             </tbody>
           </table>
@@ -153,9 +156,9 @@
       const purifiables = produits.filter(([, p]) => p.purifiable);
       if (purifiables.length) {
         panelsEl.insertAdjacentHTML('beforeend', `
-          <div class="card">
-            <h3>🧪 Purification</h3>
-            <form class="entry" id="form-purif">
+          <details class="card" id="det-purif" ${ouverts.has('__purif') ? 'open' : ''}>
+            <summary style="cursor:pointer;font-weight:600;">🧪 Purification</summary>
+            <form class="entry" id="form-purif" style="margin-top:12px;">
               <div class="field"><label>Produit</label><select id="pf-prod">${purifiables.map(([pid, p]) => `<option value="${pid}">${p.nom}</option>`).join('')}</select></div>
               <div class="field"><label>De</label><select id="pf-de">${PURETES.slice(0, -1).map(k => `<option value="${k}">${labelPurete(k)}</option>`).join('')}</select></div>
               <div class="field"><label>Vers</label><select id="pf-vers">${PURETES.slice(1).map(k => `<option value="${k}">${labelPurete(k)}</option>`).join('')}</select></div>
@@ -163,7 +166,8 @@
               <button class="submit" type="submit">Purifier</button>
             </form>
             <div class="note-hint">Déplace la quantité d'un niveau de pureté vers un niveau supérieur. Le stock total ne change pas.</div>
-          </div>`);
+          </details>`);
+        document.getElementById('det-purif').addEventListener('toggle', e => { e.target.open ? ouverts.add('__purif') : ouverts.delete('__purif'); });
         document.getElementById('form-purif').addEventListener('submit', async e => {
           e.preventDefault();
           const pid = document.getElementById('pf-prod').value;
@@ -180,6 +184,9 @@
           toast('Purification effectuée.');
         });
       }
+      panelsEl.querySelectorAll('details[data-pid]').forEach(d => {
+        d.addEventListener('toggle', () => { d.open ? ouverts.add(d.dataset.pid) : ouverts.delete(d.dataset.pid); });
+      });
       panelsEl.querySelectorAll('.edit-pur').forEach(inp => {
         inp.addEventListener('change', () => {
           const v = parseInt(inp.value, 10);
