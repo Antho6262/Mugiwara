@@ -112,7 +112,6 @@
           <form class="entry" id="form-prod" style="display:none;margin-bottom:16px;">
             <div class="field"><label>Nom</label><input type="text" id="p-nom" required></div>
             <div class="field"><label>Prix</label><input type="number" id="p-prix" min="0" step="1" required></div>
-            <div class="field"><label>Seuil d'alerte</label><input type="number" id="p-seuil" min="0" step="1" value="5"></div>
             <div class="field"><label>Purifiable ?</label><select id="p-purifiable"><option value="0">Non</option><option value="1">Oui</option></select></div>
             <button class="submit" type="submit">Ajouter</button>
             <button class="ghost" type="button" id="btn-cancel-prod">Annuler</button>
@@ -121,9 +120,8 @@
           <div class="prod-grid">
             ${produits.length === 0 ? `<div class="empty">Aucun produit dans cette catégorie.</div>` :
               produits.map(([pid, p]) => {
-                const bas = !p.purifiable && (p.stock || 0) <= (p.seuil || 0);
                 return `
-                <div class="prod-card ${bas ? 'bas' : ''}">
+                <div class="prod-card">
                   <div class="prod-head">
                     <div class="prod-nom">${p.nom}</div>
                     ${canManage(membre) ? `<button class="del" data-cat="${catId}" data-prod="${pid}" title="Supprimer">✕</button>` : ''}
@@ -132,9 +130,8 @@
                     ? `<input type="number" class="edit-prix" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.prix || 0}">`
                     : `<b>${fmtMoney(p.prix)}</b>`}</div>
                   <div class="prod-row"><span>Stock</span>${p.purifiable ? `<b>${totalPurete(p.purete)}</b>` : canManage(membre)
-                    ? `<input type="number" class="edit-stock ${bas ? 'stock-low' : ''}" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.stock || 0}">`
-                    : `<b style="${bas ? 'color:var(--danger);' : ''}">${p.stock || 0}</b>`}</div>
-                  <div class="prod-row"><span>Seuil d'alerte</span><b>${p.seuil || 0}</b></div>
+                    ? `<input type="number" class="edit-stock" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.stock || 0}">`
+                    : `<b>${p.stock || 0}</b>`}</div>
                   ${p.purifiable ? `
                   <details data-pid="${pid}" ${ouverts.has(pid) ? 'open' : ''} class="prod-pur">
                     <summary>🧪 Puretés — ${PURETES.filter(k => (p.purete || {})[k] > 0).map(k => labelPurete(k) + ' : ' + p.purete[k]).join(' · ') || 'vide'}</summary>
@@ -250,12 +247,10 @@
         e.preventDefault();
         const nom = document.getElementById('p-nom').value.trim();
         const prix = parseFloat(document.getElementById('p-prix').value);
-        const seuil = parseInt(document.getElementById('p-seuil').value, 10) || 0;
         if (!nom || isNaN(prix)) return;
         const purifiable = document.getElementById('p-purifiable').value === '1';
-        db.ref(`stock/${catId}/produits/${uid()}`).set(purifiable ? { nom, prix, seuil, stock: 0, purifiable: true, purete: puretesVides() } : { nom, prix, seuil, stock: 0 });
+        db.ref(`stock/${catId}/produits/${uid()}`).set(purifiable ? { nom, prix, stock: 0, purifiable: true, purete: puretesVides() } : { nom, prix, stock: 0 });
         formProd.reset();
-        document.getElementById('p-seuil').value = 5;
         formProd.style.display = 'none';
         btnNewProd.style.display = 'inline-block';
       });

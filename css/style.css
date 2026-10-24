@@ -243,7 +243,6 @@ tr:last-child td{border-bottom:none;}
 }
 
 .note-hint{font-size:13px;color:var(--muted);margin-top:10px;font-style:italic;}
-.stock-low{border-color:var(--danger) !important;color:var(--danger) !important;}
 .member-checklist{display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg-1);border:1px solid var(--line);border-radius:var(--radius);}
 .member-checklist label{
   display:flex;align-items:center;gap:6px;
@@ -442,7 +441,6 @@ tr:hover td{background:rgba(209,43,242,.06);}
   transition:transform .15s, box-shadow .15s;
 }
 .prod-card:hover{transform:translateY(-2px);box-shadow:0 0 18px rgba(209,43,242,.4);}
-.prod-card.bas{border-color:var(--danger);box-shadow:0 0 14px rgba(255,77,125,.35);}
 .prod-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid rgba(209,43,242,.3);}
 .prod-nom{font-family:'Permanent Marker',cursive;font-size:19px;color:#fff;text-shadow:0 0 10px rgba(209,43,242,.5);}
 .prod-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;}
