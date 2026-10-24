@@ -5,6 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Les Mugiwara — Stock</title>
 <link rel="stylesheet" href="../css/style.css">
+<style>
+  .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+  .prod-card{
+    background:linear-gradient(180deg, rgba(34,22,58,.92), rgba(16,10,28,.96));
+    border:1px solid rgba(209,43,242,.35);border-radius:12px;padding:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:8px;
+    transition:transform .15s, box-shadow .15s;
+  }
+  .prod-card:hover{transform:translateY(-2px);box-shadow:0 0 18px rgba(209,43,242,.4);}
+  .prod-card.bas{border-color:var(--danger);box-shadow:0 0 14px rgba(255,77,125,.35);}
+  .prod-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid rgba(209,43,242,.3);}
+  .prod-nom{font-family:'Permanent Marker',cursive;font-size:19px;color:#fff;text-shadow:0 0 10px rgba(209,43,242,.5);}
+  .prod-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;}
+  .prod-row span{font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;font-size:12px;color:var(--sunset-1);}
+  .prod-row b{font-family:'JetBrains Mono',monospace;color:var(--gold);}
+  .prod-row input{width:90px;padding:6px 8px;text-align:right;}
+  .prod-adj{display:flex;gap:8px;}
+  .prod-adj button{flex:1;font-size:16px;padding:6px;}
+  .prod-pur{background:rgba(8,5,15,.7);border:1px solid rgba(209,43,242,.3);border-radius:10px;padding:8px 10px;}
+  .prod-pur summary{cursor:pointer;font-size:13px;color:var(--muted);}
+  .pur-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  .pur-grid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--sunset-1);}
+  .pur-grid input{width:100%;padding:5px 8px;}
+</style>
 </head>
 <body>
 <div class="shell">
@@ -118,38 +142,41 @@
             <button class="ghost" type="button" id="btn-cancel-prod">Annuler</button>
           </form>` : ''}
 
-          <table>
-            <thead><tr><th>Produit</th><th>Prix</th><th>Stock</th><th>Seuil</th><th>Ajuster</th>${canManage(membre) ? '<th></th>' : ''}</tr></thead>
-            <tbody>
-              ${produits.length === 0 ? `<tr><td colspan="6" class="empty">Aucun produit dans cette catégorie.</td></tr>` :
-                produits.map(([pid, p]) => `
-                  <tr>
-                    <td>${p.nom}</td>
-                    <td>${canManage(membre)
-                        ? `<input type="number" class="edit-prix" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.prix || 0}" style="width:90px;">`
-                        : fmtMoney(p.prix)}</td>
-                    <td>${p.purifiable ? `<span>${totalPurete(p.purete)}</span>` : canManage(membre)
-                        ? `<input type="number" class="edit-stock ${(p.stock||0) <= (p.seuil||0) ? 'stock-low' : ''}" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.stock || 0}" style="width:80px;">`
-                        : `<span class="${(p.stock || 0) <= (p.seuil || 0) ? 'amt' : ''}" style="${(p.stock||0) <= (p.seuil||0) ? 'color:var(--danger);' : ''}">${p.stock || 0}</span>`}</td>
-                    <td>${p.seuil || 0}</td>
-                    <td style="display:flex;gap:6px;">${p.purifiable ? '<span class="empty">voir purétés</span>' : `
-                      <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="-1">−</button>
-                      <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="1">+</button>`}
-                    </td>
-                    ${canManage(membre) ? `<td style="white-space:nowrap;"><button class="ghost tog-pur" data-cat="${catId}" data-prod="${pid}" title="Activer/désactiver la purification">🧪 ${p.purifiable ? 'ON' : 'OFF'}</button> <button class="del" data-cat="${catId}" data-prod="${pid}">✕</button></td>` : ''}
-                  </tr>
-                  ${p.purifiable ? `<tr><td colspan="6" style="padding:0 10px 12px;">
-                    <details data-pid="${pid}" ${ouverts.has(pid) ? 'open' : ''} style="background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:8px 12px;">
-                    <summary style="cursor:pointer;font-size:13px;color:var(--muted);">🧪 Puretés — ${PURETES.filter(k => (p.purete || {})[k] > 0).map(k => labelPurete(k) + ' : ' + p.purete[k]).join(' · ') || 'vide'}</summary>
-                    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;">
-                      ${PURETES.map(k => `<label style="display:flex;flex-direction:column;gap:3px;font-size:12px;">${labelPurete(k)}
+          <div class="prod-grid">
+            ${produits.length === 0 ? `<div class="empty">Aucun produit dans cette catégorie.</div>` :
+              produits.map(([pid, p]) => {
+                const bas = !p.purifiable && (p.stock || 0) <= (p.seuil || 0);
+                return `
+                <div class="prod-card ${bas ? 'bas' : ''}">
+                  <div class="prod-head">
+                    <div class="prod-nom">${p.nom}</div>
+                    ${canManage(membre) ? `<button class="del" data-cat="${catId}" data-prod="${pid}" title="Supprimer">✕</button>` : ''}
+                  </div>
+                  <div class="prod-row"><span>Prix</span>${canManage(membre)
+                    ? `<input type="number" class="edit-prix" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.prix || 0}">`
+                    : `<b>${fmtMoney(p.prix)}</b>`}</div>
+                  <div class="prod-row"><span>Stock</span>${p.purifiable ? `<b>${totalPurete(p.purete)}</b>` : canManage(membre)
+                    ? `<input type="number" class="edit-stock ${bas ? 'stock-low' : ''}" data-cat="${catId}" data-prod="${pid}" min="0" step="1" value="${p.stock || 0}">`
+                    : `<b style="${bas ? 'color:var(--danger);' : ''}">${p.stock || 0}</b>`}</div>
+                  <div class="prod-row"><span>Seuil d'alerte</span><b>${p.seuil || 0}</b></div>
+                  ${p.purifiable ? `
+                  <details data-pid="${pid}" ${ouverts.has(pid) ? 'open' : ''} class="prod-pur">
+                    <summary>🧪 Puretés — ${PURETES.filter(k => (p.purete || {})[k] > 0).map(k => labelPurete(k) + ' : ' + p.purete[k]).join(' · ') || 'vide'}</summary>
+                    <div class="pur-grid">
+                      ${PURETES.map(k => `<label>${labelPurete(k)}
                         ${canManage(membre)
-                          ? `<input type="number" class="edit-pur" data-cat="${catId}" data-prod="${pid}" data-niv="${k}" min="0" step="1" value="${(p.purete || {})[k] || 0}" style="width:80px;">`
+                          ? `<input type="number" class="edit-pur" data-cat="${catId}" data-prod="${pid}" data-niv="${k}" min="0" step="1" value="${(p.purete || {})[k] || 0}">`
                           : `<strong>${(p.purete || {})[k] || 0}</strong>`}</label>`).join('')}
-                    </div></details></td></tr>` : ''}
-                `).join('')}
-            </tbody>
-          </table>
+                    </div>
+                  </details>` : `
+                  <div class="prod-adj">
+                    <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="-1">−</button>
+                    <button class="ghost adj" data-cat="${catId}" data-prod="${pid}" data-delta="1">+</button>
+                  </div>`}
+                  ${canManage(membre) ? `<button class="ghost tog-pur" data-cat="${catId}" data-prod="${pid}" title="Activer/désactiver la purification" style="margin-top:8px;width:100%;">🧪 Purification ${p.purifiable ? 'ON' : 'OFF'}</button>` : ''}
+                </div>`;
+              }).join('')}
+          </div>
         </div>
       `;
 
