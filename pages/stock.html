@@ -5,30 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Les Mugiwara — Stock</title>
 <link rel="stylesheet" href="../css/style.css">
-<style>
-  .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
-  .prod-card{
-    background:linear-gradient(180deg, rgba(34,22,58,.92), rgba(16,10,28,.96));
-    border:1px solid rgba(209,43,242,.35);border-radius:12px;padding:14px;
-    box-shadow:0 6px 20px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:8px;
-    transition:transform .15s, box-shadow .15s;
-  }
-  .prod-card:hover{transform:translateY(-2px);box-shadow:0 0 18px rgba(209,43,242,.4);}
-  .prod-card.bas{border-color:var(--danger);box-shadow:0 0 14px rgba(255,77,125,.35);}
-  .prod-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid rgba(209,43,242,.3);}
-  .prod-nom{font-family:'Permanent Marker',cursive;font-size:19px;color:#fff;text-shadow:0 0 10px rgba(209,43,242,.5);}
-  .prod-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;}
-  .prod-row span{font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;font-size:12px;color:var(--sunset-1);}
-  .prod-row b{font-family:'JetBrains Mono',monospace;color:var(--gold);}
-  .prod-row input{width:90px;padding:6px 8px;text-align:right;}
-  .prod-adj{display:flex;gap:8px;}
-  .prod-adj button{flex:1;font-size:16px;padding:6px;}
-  .prod-pur{background:rgba(8,5,15,.7);border:1px solid rgba(209,43,242,.3);border-radius:10px;padding:8px 10px;}
-  .prod-pur summary{cursor:pointer;font-size:13px;color:var(--muted);}
-  .pur-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-  .pur-grid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--sunset-1);}
-  .pur-grid input{width:100%;padding:5px 8px;}
-</style>
 </head>
 <body>
 <div class="shell">

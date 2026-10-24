@@ -439,19 +439,18 @@
         const produits = entries(cat.produits);
         return `<div class="card">
           <h3>${cat.emoji || '📦'} ${cat.nom} <button class="del" data-cat="${catId}" data-type="cat" style="float:right;">✕</button></h3>
-          <table>
-            <thead><tr><th>Produit</th><th>Prix</th><th>Seuil</th><th></th></tr></thead>
-            <tbody>
-              ${produits.length === 0 ? `<tr><td colspan="4" class="empty">Aucun produit.</td></tr>` :
-                produits.map(([pid, p]) => `
-                  <tr>
-                    <td>${p.nom}</td>
-                    <td>${fmtMoney(p.prix)}</td>
-                    <td>${p.seuil || 0}</td>
-                    <td><button class="del" data-cat="${catId}" data-prod="${pid}" data-type="prod">✕</button></td>
-                  </tr>`).join('')}
-            </tbody>
-          </table>
+          <div class="prod-grid">
+            ${produits.length === 0 ? `<div class="empty">Aucun produit.</div>` :
+              produits.map(([pid, p]) => `
+                <div class="prod-card">
+                  <div class="prod-head">
+                    <div class="prod-nom">${p.nom}</div>
+                    <button class="del" data-cat="${catId}" data-prod="${pid}" data-type="prod" title="Supprimer">✕</button>
+                  </div>
+                  <div class="prod-row"><span>Prix</span><b>${fmtMoney(p.prix)}</b></div>
+                  <div class="prod-row"><span>Seuil d'alerte</span><b>${p.seuil || 0}</b></div>
+                </div>`).join('')}
+          </div>
           <form class="entry form-prod-admin" data-cat="${catId}" style="margin-top:14px;">
             <div class="field"><label>Nom</label><input type="text" class="np-nom" required></div>
             <div class="field"><label>Prix</label><input type="number" class="np-prix" min="0" step="1" required></div>
